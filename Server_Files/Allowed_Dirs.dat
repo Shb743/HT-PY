@@ -1,0 +1,5 @@
+#To comment use a #
+#Working_Directory = *, eg : - */something
+#All child dirs = @ eg */@ means everything in the working dir is allowed
+*/@
+/Users/Shoaib/Desktop/Anime/@

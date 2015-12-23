@@ -125,7 +125,7 @@ def Configure_PHP():
 			else:
 				PHP_CGI_PATH = Server_file_path+"PHP/php_compiled/bin/./php-cgi"#Set PHP CGI PATH
 		else:
-			PHP_CGI_PATH = Server_file_path+"PHP/php_windows/php-5.6.9-Win32-VC11-x86/php-cgi.exe"#Set PHP CGI PATH
+			PHP_CGI_PATH = Server_file_path+"PHP/no-path"#Set PHP CGI PATH
 	except:
 		Error = 1
 		EMSG = "Error Configuring PHP"

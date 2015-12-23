@@ -1,0 +1,7 @@
+*White List
+-enabled:N
+-Adresslist = [""]
+
+*Black List
+-enabled:N
+-Adresslist = [""]

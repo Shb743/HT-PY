@@ -40,8 +40,8 @@ Socket_Backlog = 5#MAX number of clients waiting to be accepted(in que).
 Ip=""#IP(if left blank will bind to all available interfaces)
 Port = 80#Port
 SSLPort = 443#Port for HTTPS
-SSLEnabled = 1#HTTPS on/off
-PHPEnabled = 1#PHP on/off
+SSLEnabled = 0#HTTPS on/off
+PHPEnabled = 0#PHP on/off
 Logging = 0#Should The Server Log stuff?(Will slow down server,slightly per request)
 Working_Directory = "%/root/"# % = execution directory(i.e:- where server root is set,Custom.py & PHP will be executed,and where allowed directories * will be set)
 MAX_CONT_SIZE = 52428800 #50MB, Max size of post data
@@ -55,7 +55,7 @@ SSL_KEY = "server.key"#Name of ssl key(should be in Server_Files/SSL_Cert/)
 #Play around with these to fine tune it to your machine & use case
 NumberOfServicesPerThread = 12#number of connections on one thread [should be around 8 - 15]
 ServiceThreadLimit = 18#Max number of threads to allow server to create(per instance i.e:- http & https) [should be near 15-50,as they run on one core]
-Min_Active_ServiceThreads = 1#Minimum active threads(I.E:-dont kill this service thread even if it has no work)[should be near 0-3]
+Min_Active_ServiceThreads = 0#Minimum active threads(I.E:-dont kill this service thread even if it has no work)[should be near 0-3]
 #Play around with these to fine tune it to your machine & use case
 #User Changeable
 
