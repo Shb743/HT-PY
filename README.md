@@ -9,10 +9,10 @@ Comes with server side language support for Python & PHP(to an extent).
 #Pre-Requisites
 The server does not need any pre-requisites other than python 2.7 with the standard libraries.
 
-If PHP support is a requirement then GCC and python dev tools are needed as well as a POSIX system.
+If PHP support is a requirement then GCC and python dev tools are needed as well as a POSIX(Mac,Linux) system.
 
 For HTTPS support Open-SSL is required.
 
 
 #Author:Shoaib Omar (C) 2015
-example of website running on HT&PY: shoaib.zzzz.io *Currently incomplete
+example of website running on HT&PY: shoaib.zzzz.io | https://shoaib.zzzz.io *Currently incomplete
