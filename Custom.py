@@ -40,13 +40,12 @@ def GET(Requested_Content_Name,Requested_Content_Path,Url_parameters,Mime,RAW_DA
 	try:
 		#Do Work Here
 		#EXAMPLE
-		#if ("Hello.html" in Requested_Content_Name):
-		#	Final_Output_Content = "<html><h1>Hello World!</h1></html>"
+		if ("Hello.html" in Requested_Content_Name):
+			Final_Output_Content = "<html><h1>Hello World!</h1></html>"
 		#EXAMPLE
 		#Do Work Here
 	except Exception, e:
 		pass
-
 	return Final_Output_Content,Mime,Custom_Headers,Final_Output_File_Path#Return Content,Mime type & Any custom headers.
 #Custom GET request Handling
 
@@ -64,8 +63,8 @@ def POST(Requested_Content_Name,Requested_Content_Path,Url_parameters,Mime,POST_
 
 		#EXAMPLE
 		#Basic Example
-		#if ("Donald" in POST_DATA):
-		#	Final_Output_Content = "Duck"
+		if ("Donald" in POST_DATA):
+			Final_Output_Content = "Duck"
 		#Basic Example
 		#
 		#Advanced Example
