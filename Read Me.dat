@@ -1,0 +1,75 @@
+#Author:Shoaib Omar (C) 2015
+
+HTTP
+----
+My implementation of HTTP is quite basic and a lot functionality is missing(I.E:- Caching,Compression,etc).
+
+
+PHP
+---
+I am sorry if any PHP functionality is missing;There is next to no documentation(that I could find) on PHP and server integration.
+(I know the way I implemented php is crappy but I couldnt think of a better way that wouldnt become a whole other project on its own).
+
+There is an known memory overflow in my current implementation of php;when you try to load a php from within a php file using "file('http://server:port/somephpfile.php');" the php gives an out of memory exception,tbh i have no idea why....(If you figure this one out pls let me know! any help is greatly appreciated).
+
+SSL/HTTPS
+---------
+The server is designed to use the best available SSL suite(this is default option with the ssl library),but the security may vary greatly with local OpenSSL installation,to improve security I recomend updating SSL regularly and recompiling python with new ssl support. 
+*Note:Certificate files should be stored in "Server_Files/SSL_Cert/" and the file names be updated in settings column of the main server code.
+By default SSL is turned off and will need to be turned on if you want SSL support.
+SSL server runs as a separate instance of the http server on a new process,and will create its own threads etc.
+
+
+MIME:
+-----
+To add further mime types edit the mime.typ.shb file, using a text editor, in the Server_Files directory
+
+
+File Handling(PHP):
+------------------
+I could not figure out how to send file objects over to the $_FILES variable in PHP.
+Thus I made a short cut,I placed the name of the Temporary file in the POST_FILE_PATH variable.
+In PHP this Variable can be accessed by using "$_SERVER['POST_FILE_PATH']".
+If the file was a file upload to the server an addition variable,POST_FILE_NAME, will be set.
+This variable can be accessed by "$_SERVER['POST_FILE_NAME']" it will contain the name of the file being sent.
+
+
+File Upload example using the servers system on PHP:
+---------------------------------------------------------
+<?php
+$uploadfile = $_SERVER['POST_FILE_PATH'];
+
+echo '<pre>';
+if ($uploadfile != ""){
+if (rename($uploadfile, $_SERVER['POST_FILE_NAME'])) {
+    echo "File is valid, and was successfully uploaded.\n";
+} else {
+    echo "ERROR!\n";
+}
+}else{
+	echo "Not a file upload.\n";
+}
+
+echo 'Here is some more debugging info:';
+echo($uploadfile);
+
+print "</pre>";
+?>
+---------------------------------------------------------
+
+Useful snippets of code:
+------------------------
+There are some useful snippets of code which may help you in Server_Files/Other.
+
+
+My Sources:
+-----------
+The main source of my knowledge on PHP was from this website: http://graphcomp.com/info/specs/cgi11.html
+The main source of my knowledge on HTTP was from this website: http://www.w3.org/Protocols/rfc2616/rfc2616.html
+
+------------------------------------------------------------------------------------------------------------------------------------
+*Any one who helps me will have their name listed in the contributors section if they want,if not their anonymity can be maintained.
+
+Contributors
+------------
+1.Shoaib Omar.
