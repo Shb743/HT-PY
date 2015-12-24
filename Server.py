@@ -40,8 +40,8 @@ Socket_Backlog = 5#MAX number of clients waiting to be accepted(in que).
 Ip=""#IP(if left blank will bind to all available interfaces)
 Port = 80#Port
 SSLPort = 443#Port for HTTPS
-SSLEnabled = 1#HTTPS on/off
-PHPEnabled = 1#PHP on/off
+SSLEnabled = 0#HTTPS on/off
+PHPEnabled = 0#PHP on/off
 Logging = 0#Should The Server Log stuff?
 ErrorLogging = 0#Should Server Log Exceptions.[To be implemented]
 Working_Directory = "%/root/"# % = execution directory(i.e:- where server root is set,Custom.py & PHP will be executed,and where allowed directories * will be set)

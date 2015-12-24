@@ -50,7 +50,7 @@ def Configure_Subprocess():
 					os.system("rm -r subprocess32-3.2.6")
 					os.chdir(Server_file_path+"..")
 				else:
-					print "Has not been implemented on win32 yet!"
+					print "No subprocess on windows."
 					Error=1
 					EMSG = "No subprocess on windows."
 			else:
@@ -128,10 +128,13 @@ def Configure_PHP():
 				else:
 					print "Server will not play nice with PHP Files!"
 					EMSG = "You did not setup php,reboot server to reinitialize setup."
+					Error = 1
 			else:
 				PHP_CGI_PATH = Server_file_path+"PHP/php_compiled/bin/./php-cgi"#Set PHP CGI PATH
 		else:
 			PHP_CGI_PATH = Server_file_path+"PHP/no-path"#Set PHP CGI PATH
+			EMSG = "No PHP support for windows."
+			Error = 1
 	except:
 		Error = 1
 		EMSG = "Error Configuring PHP"
@@ -200,18 +203,8 @@ def GET_PHP(Content_Name,Content_Path,RAW_DATA,Url_parameters,Port,Ip,Working_Di
 		#Make sure there is content
 		del PHP_OUT
 		return Custom_Headers,Cont
-	else:
-		html = """<html><h1>Sorry I have not bothered to get this working on windows,yet. :P,If you want to get it done with out waiting for me, go ahead</h1>
-		<br>
-		<p1>The php files should already exist in Server_Files/PHP/php_windows/ and the PHP_CGI_PATH should automatically set to it.
-		<br>
-		the only thing you need to do is configure the communication between the server and the executable...
-		<br>
-		The code above (where this message is produced) should show you how to do it,as this is the code used by the unix php binary.
-		</p1>
-		</html>
-		"""
-		return GF.Construct_Header("","close","text/html",str(len(html)),"400 ERROR"),html#Tell windows users that Im Sorry O.o,Am I,am I really ?#Tell windows users that Im Sorry O.o,Am I,am I really ?#Tell windows users that Im Sorry O.o,Am I,am I really ?
+	html = "<html><h1>Something went wrong!</h1></html>"
+	return "status: 400 Error\nContent-Type: text/html;\n",html
 #GET/HEAD
 
 
@@ -268,16 +261,6 @@ def POST_PHP(RAW_DATA,Url_parameters,Content_Name,Port,Ip,Content_Path,Working_D
 		#Make sure there is content
 		del PHP_OUT
 		return Custom_Headers,Cont
-	else:
-		html = """<html><h1>Sorry I have not bothered to get this working on windows,yet. :P,If you want to get it done with out waiting for me, go ahead</h1>
-		<br>
-		<p1>The php files should already exist in Server_Files/PHP/php_windows/ and the PHP_CGI_PATH should automatically set to it.
-		<br>
-		the only thing you need to do is configure the communication between the server and the executable...
-		<br>
-		The code above (where this message is produced) should show you how to do it,as this is the code used by the unix php binary.
-		</p1>
-		</html>
-		"""
-		return "status: 400 Error\nContent-Type: text/html;\n",html#Tell windows users that Im Sorry O.o,Am I,am I really ?
+	html = "<html><h1>Something went wrong!</h1></html>"
+	return "status: 400 Error\nContent-Type: text/html;\n",html
 #POST
