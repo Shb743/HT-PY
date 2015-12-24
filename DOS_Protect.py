@@ -13,6 +13,7 @@ DOS_Candidates = {}
 Blocked_Candidates = []
 On = 1#Is service Active
 Max_Concurrent_Requests = 30#Should be increased if large number of connections are expected
+Log_Out = []#Logging
 #Globals
 
 print "DOS protection service ready to start..."#on import
@@ -41,6 +42,8 @@ def Check():
 	global Max_Concurrent_Requests
 	global Blocked_Candidates
 	global DOS_Candidates
+	global Log_Out
+	global File_Path
 	#Globals
 	#Perform Checks
 	while On:
@@ -54,12 +57,21 @@ def Check():
 		for BD in TBD:
 			del DOS_Candidates[BD]
 		#Clear doser
+		#Logging
+		if (Log_Out != []):
+			Log_object = open(File_Path+"Server_Files/Logs/Log.dat", "a")#Open Log File
+			for Log_Entry in Log_Out:
+				Log_object.write(Log_Entry)
+			Log_Out = []
+			Log_object.close()
+		#Logging
 		time.sleep(3.5)#Check every few seconds,i.e:- allow other threads to execute
 	#Perform Checks
 #Security Checks
 
 #Alert Server owner to Possible DOS
 def Possible_DOS_LOG(address):
+	global File_Path
 	DOS_LOG = open(File_Path+"Server_Files/Logs/DOS.dat","a+")
 	DOS_LOG.write("Added to DOS list:"+address+"\n")
 	DOS_LOG.write("Date:"+str(datetime.datetime.utcnow().day)+"/"+str(datetime.datetime.utcnow().month)+"/"+str(datetime.datetime.utcnow().year)+"\n")

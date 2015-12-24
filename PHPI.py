@@ -5,6 +5,12 @@
 
 #IMPORTS
 import os,sys,GF
+#Escaping php
+try:
+	from pipes import quote
+except ImportError:
+	from shlex import quote
+#Escaping php
 #IMPORTS
 
 
@@ -133,8 +139,6 @@ def Configure_PHP():
 Configure_PHP()#Configure it!
 os.chdir(WD)#Reset working Dir
 
-
-
 #Communicate
 def subprocess_cmd(command,InData,cwdd,MAX_PHP_EXECUTION_TIME):
 	#print command+'\n'+str(InData)+"\n\n\n"
@@ -146,8 +150,8 @@ def subprocess_cmd(command,InData,cwdd,MAX_PHP_EXECUTION_TIME):
 		else:
 			proc_stdout = process.communicate(timeout=MAX_PHP_EXECUTION_TIME)[0].strip()
 		return proc_stdout
-	except Exception, e:
-		process.terminate()#Kill process
+	except:
+		process.kill()#Kill process
 	return "Status:400 Error\n\rSome thing went wrong with php?"#Upon Failure
 #Communicate
 
@@ -159,12 +163,11 @@ def HeaderToEnvVars(RAW_DATA):
 			Data = Data.replace("'",'"')#Prevent escape strings :3
 			Split_Loc = Data.find(":")#Split only by first :
 			Meh_data = [Data[:Split_Loc].strip(),Data[Split_Loc+1:].strip()]#split only by first :
-			MEH = (Meh_data[0].upper()).replace("-","_").strip()#Replace - with _
+			MEH = quote((Meh_data[0].upper()).replace("-","_").strip())#Replace - with _ & make shell safe
 			if (MEH == "CONTENT_TYPE"):
-				Export_Str += "export "+MEH+"='"+Meh_data[1]+"';"
+				Export_Str += "export "+MEH+"="+quote(Meh_data[1])+";"
 			elif( (len(MEH) >= 3) and not("HTTP" in MEH)):#Make sure first header is not inserted
-				Export_Str += "export HTTP_"+MEH+"='"+Meh_data[1]+"';"
-
+				Export_Str += "export HTTP_"+MEH+"="+quote(Meh_data[1])+";"
 	return Export_Str
 #Header to enviornment variables
 
@@ -183,7 +186,7 @@ def GET_PHP(Content_Name,Content_Path,RAW_DATA,Url_parameters,Port,Ip,Working_Di
 	global WINDOWS_OS
 	if not(WINDOWS_OS):
 		#print Content_Path
-		Export_String = HeaderToEnvVars(RAW_DATA)+ "export QUERY_STRING='"+Url_parameters+"';export SCRIPT_FILENAME='"+Content_Name+"';export REQUEST_METHOD=GET;export GATEWAY_INTERFACE=CGI/1.1;export REDIRECT_STATUS=true;export SERVER_SOFTWARE='SHB/1.0 (SHB)';export SERVER_PROTOCOL='HTTP/1.1';export SERVER_PORT="+str(Port)+";export SERVER_NAME='"+Ip+"';export PATH_INFO='"+Content_Path.replace(Working_Directory[:-1],"")+Content_Name+"';"
+		Export_String = HeaderToEnvVars(RAW_DATA)+ "export QUERY_STRING="+quote(Url_parameters)+";export SCRIPT_FILENAME="+quote(Content_Name)+";export REQUEST_METHOD=GET;export GATEWAY_INTERFACE=CGI/1.1;export REDIRECT_STATUS=true;export SERVER_SOFTWARE='SHB/1.0 (SHB)';export SERVER_PROTOCOL='HTTP/1.1';export SERVER_PORT="+str(Port)+";export SERVER_NAME='"+Ip+"';export PATH_INFO="+quote(Content_Path.replace(Working_Directory[:-1],"")+Content_Name)+";"
 		#Set HTTPS to true
 		if HTTPS:
 			Export_String+="export HTTPS=1;"
@@ -227,7 +230,7 @@ def POST_PHP(RAW_DATA,Url_parameters,Content_Name,Port,Ip,Content_Path,Working_D
 	global PHP_CGI_PATH
 	if not(WINDOWS_OS):
 		PHP_OUT = ""#Place Holder
-		Export_String = HeaderToEnvVars(RAW_DATA)+ "export QUERY_STRING='"+Url_parameters+"';export SCRIPT_FILENAME='"+Content_Name+"';export REQUEST_METHOD=POST;export GATEWAY_INTERFACE=CGI/1.1;export REDIRECT_STATUS=true;export SERVER_SOFTWARE='SHB/1.0 (SHB)';export SERVER_PROTOCOL='HTTP/1.1';export SERVER_PORT="+str(Port)+";export SERVER_NAME='"+Ip+"';export PATH_INFO='"+Content_Path.replace(Working_Directory[:-1],"")+Content_Name+"';"
+		Export_String = HeaderToEnvVars(RAW_DATA)+ "export QUERY_STRING="+quote(Url_parameters)+";export SCRIPT_FILENAME="+quote(Content_Name)+";export REQUEST_METHOD=POST;export GATEWAY_INTERFACE=CGI/1.1;export REDIRECT_STATUS=true;export SERVER_SOFTWARE='SHB/1.0 (SHB)';export SERVER_PROTOCOL='HTTP/1.1';export SERVER_PORT="+str(Port)+";export SERVER_NAME='"+Ip+"';export PATH_INFO="+quote(Content_Path.replace(Working_Directory[:-1],"")+Content_Name)+";"
 		#Set HTTPS to true
 		if HTTPS:
 			Export_String+="export HTTPS=1;"
@@ -252,9 +255,9 @@ def POST_PHP(RAW_DATA,Url_parameters,Content_Name,Port,Ip,Content_Path,Working_D
 		#File Handling
 		else:
 			if (POST_File_Name != ""):
-				Export_String +="export POST_FILE_PATH='"+POST_DATA.name+"';export POST_FILE_NAME='"+POST_File_Name+"';"
+				Export_String +="export POST_FILE_PATH="+quote(POST_DATA.name)+";export POST_FILE_NAME="+quote(POST_File_Name)+";"
 			else:
-				Export_String +="export POST_FILE_PATH='"+POST_DATA.name+"';"
+				Export_String +="export POST_FILE_PATH="+quote(POST_DATA.name)+";"
 			PHP_OUT=subprocess_cmd(Export_String+PHP_CGI_PATH+" '"+Content_Name+"'",None,Content_Path,MAX_PHP_EXECUTION_TIME).split("\n\r")
 		#File Handling
 		Custom_Headers = PHP_OUT[0].replace("\r\n","\n")#Extract Header info

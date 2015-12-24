@@ -12,7 +12,7 @@ import json#Decoding Settings File :O
 import uuid#Generating Temporary file names & Service Thread ID's ~
 import GF#Global Functions
 import Custom#Custom Handling of requests
-import DOS_Protect#My protection Script !(PROTECT)
+import DOS_Protect#My protection Script !(Takes care of logging as well)
 import select#Check if socket is ready :3
 import time#Time out,sleeping etc...
 #Imports*
@@ -40,9 +40,10 @@ Socket_Backlog = 5#MAX number of clients waiting to be accepted(in que).
 Ip=""#IP(if left blank will bind to all available interfaces)
 Port = 80#Port
 SSLPort = 443#Port for HTTPS
-SSLEnabled = 0#HTTPS on/off
-PHPEnabled = 0#PHP on/off
-Logging = 0#Should The Server Log stuff?(Will slow down server,slightly per request)
+SSLEnabled = 1#HTTPS on/off
+PHPEnabled = 1#PHP on/off
+Logging = 0#Should The Server Log stuff?
+ErrorLogging = 0#Should Server Log Exceptions.[To be implemented]
 Working_Directory = "%/root/"# % = execution directory(i.e:- where server root is set,Custom.py & PHP will be executed,and where allowed directories * will be set)
 MAX_CONT_SIZE = 52428800 #50MB, Max size of post data
 MAX_WAIT_TIME_Request = 3 #Max time(in seconds) for HTTP request to come through
@@ -55,7 +56,7 @@ SSL_KEY = "server.key"#Name of ssl key(should be in Server_Files/SSL_Cert/)
 #Play around with these to fine tune it to your machine & use case
 NumberOfServicesPerThread = 12#number of connections on one thread [should be around 8 - 15]
 ServiceThreadLimit = 18#Max number of threads to allow server to create(per instance i.e:- http & https) [should be near 15-50,as they run on one core]
-Min_Active_ServiceThreads = 0#Minimum active threads(I.E:-dont kill this service thread even if it has no work)[should be near 0-3]
+Min_Active_ServiceThreads = 1#Minimum active threads(I.E:-dont kill this service thread even if it has no work)[should be near 0-3]
 #Play around with these to fine tune it to your machine & use case
 #User Changeable
 
@@ -530,7 +531,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 				Name = POST_DATA.name#Get name
 				POST_DATA.close()#Close the File
 				os.remove(Name)#Delete file from disk
-		except Exception, e:
+		except:
 			pass#File may have been deleted by Custom function or PHP
 		#Close POST_DATA and delete file if it is one
 
@@ -651,14 +652,13 @@ def Analyse_Request(con,addr,HTTPS):
 
 		#Log Stuff
 		if Logging:
-			Log_object = open(Server_file_path+"Logs/Log.dat", "a")
-			Log_object.write("IP:"+addr+"	|")
-			Log_object.write("Request Type:"+Request_Type+"	|")
-			Log_object.write("Requested Content:"+File_Name+"	|")
-			Log_object.write("Passed Parameters:"+Url_parameters+"	|")
-			Log_object.write("Date:"+str(datetime.datetime.utcnow().day)+"/"+str(datetime.datetime.utcnow().month)+"/"+str(datetime.datetime.utcnow().year)+"	|")
-			Log_object.write("Time:"+str(datetime.datetime.utcnow().hour)+":"+str(datetime.datetime.utcnow().minute)+"\n\n")
-			Log_object.close()
+			#Create Log Entry
+			Log_Entry = "IP:"+addr+"	|Request Type:"+Request_Type+"	|Requested Content:"+File_Name+"	|"
+			Log_Entry+= "Passed Parameters:"+Url_parameters+"	|"
+			Log_Entry+= "Date:"+str(datetime.datetime.utcnow().day)+"/"+str(datetime.datetime.utcnow().month)+"/"+str(datetime.datetime.utcnow().year)+"	|"
+			Log_Entry+="Time:"+str(datetime.datetime.utcnow().hour)+":"+str(datetime.datetime.utcnow().minute)+"\n\n"
+			#Create Log Entry
+			DOS_Protect.Log_Out.append(Log_Entry)#Add to Logging que
 		#Log Stuff
 		return Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,Data,"close",HTTPS)#Send Response Connection-close/Keep-Alive
 	except Exception, e:
@@ -680,7 +680,7 @@ def Threaded_Service(My_ID,time_out):
 	global On
 	global LargeBuffSize
 	#Globals
-	time.sleep(0.05)#Wait for work(50ms)
+	time.sleep(0.025)#Wait for work(25ms)
 	Running = 1#Set loop to on
 	Remaining_Transfers = []#All the data left for transfer.
 	while Running:
@@ -754,7 +754,7 @@ def Threaded_Service(My_ID,time_out):
 			if TLock.locked():
 				TLock.release()#Release threading :O
 			#Release locked up thread
-			Running = 0#Kill service
+			#Running = 0#Kill service
 	#print "trying to kill my self here: "+My_ID
 	#print str(len(Active_ServiceThreads)) + ' threads are active'
 	#print str(len([grandchild for parent in Active_Requests.values() for child in parent for grandchild in child])/4)+ " Requests being processed" 
