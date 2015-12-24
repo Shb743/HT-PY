@@ -15,4 +15,4 @@ For HTTPS support Open-SSL is required.
 
 
 #Author:Shoaib Omar (C) 2015
-example of website running on HT&PY: shoaib.zzzz.io | https://shoaib.zzzz.io *Currently incomplete
+example of website running on HT&PY: http://shoaib.zzzz.io | https://shoaib.zzzz.io *Currently incomplete
