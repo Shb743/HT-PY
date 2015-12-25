@@ -29,6 +29,7 @@ Server_file_path = os.getcwd()+"/Server_Files/"#Server Path.
 Allowed_Directories = []#Place Holder.
 White_List = None#Place Holder.
 Black_List = None#Place Holder.
+SSL_Context = None#Place Holder.
 SHB_Mime = []# SHB MIME !
 Default = ["index.html","index.php"] #Default file to load.
 Settings_file = "Settings.dat"#Load Settings.
@@ -76,7 +77,10 @@ else:
 if SSLEnabled:
 	try:
 		import ssl
+		SSL_Context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)#Create Context(default settings)
+		SSL_Context.load_cert_chain(certfile=Server_file_path+"SSL_Cert/"+SSL_CERT, keyfile=Server_file_path+"SSL_Cert/"+SSL_KEY)#Load up cert and key
 	except  Exception, e:
+		print e#Print out Error
 		print "SSL failed to be initizialed...."
 		DOS_Protect.On = 0#Shutdown DOS protection
 		On = 0;#Shutdown server
@@ -123,13 +127,16 @@ def Settings():
 	global Settings_file
 	global White_List
 	global Black_List
+	global SSL_Context
 	#globals
 	f = open(Server_file_path+Settings_file, "a+")
 	f.seek(0)
 	Settings = f.read().split("\n")
 	#Auto Generate file
 	if (len(Settings[0]) < 5):
-		f.write('*White List\n-enabled:N\n-Adresslist = [\"192.168.0.1\",\"127.0.0.1\"]\n\n*Black List\n-enabled:N\n-Adresslist = [\"111.111.111.111\",\"0.0.0.0\"]')
+		f.write('*White List\n-enabled:N\n-Adresslist = [\"192.168.0.1\",\"127.0.0.1\"]\n\n')
+		f.write('*Black List\n-enabled:N\n-Adresslist = [\"111.111.111.111\",\"0.0.0.0\"]\n\n')
+		f.write("*Ciphers\n-enabled:N\nCipherString = ALL:!ADH:!RC4+RSA:+HIGH:+MEDIUM:!LOW:!SSLv2:!EXPORT\n\n#Note CipherString above not recomended it's just an example")
 		f.seek(0)
 		Settings = f.read().split("\n")
 	#Auto Generate file
@@ -139,12 +146,24 @@ def Settings():
 			i+=1
 			if (Settings[i].split(":")[1] == "Y"):
 				i+=1
-				White_List = json.loads(Settings[i].split(" = ")[1])
+				White_List = json.loads(Settings[i].split("=")[1].strip())
 		if ("*Black" in Settings[i]):
 			i+=1
 			if (Settings[i].split(":")[1] == "Y"):
 				i+=1
-				Black_List = json.loads(Settings[i].split(" = ")[1])
+				Black_List = json.loads(Settings[i].split("=")[1].strip())
+		if ("*Ciphers" in Settings[i]):
+			i+=1
+			if ((Settings[i].split(":")[1] == "Y")and(SSL_Context != None)):
+				i+=1
+				try:
+					SSL_Context.set_ciphers(Settings[i].split("=")[1].strip())#Cipher string
+				except Exception, e:
+					print e#Print out Error
+					print "SSL failed to load cipher string..."
+					DOS_Protect.On = 0#Shutdown DOS protection
+					On = 0;#Shutdown server
+					sys.exit("Dead")#State Death
 #Settings
 Settings()#Load up Settings
 print "Loaded Settings(White/Black List)..."
@@ -789,7 +808,8 @@ try:
 	print("Server Active!")#PRINT
 	#INIT
 	#Serve
-	def Serv_HTTP(HTTPS,Sock,SSL_CERT_PATH="",SSL_KEY_PATH=""):
+	#SSL_CERT_PATH="",SSL_KEY_PATH="",
+	def Serv_HTTP(HTTPS,Sock,SSL_Context=None):
 		global On
 		global ServiceThreadLimit
 		global Min_Active_ServiceThreads
@@ -831,7 +851,7 @@ try:
 			#If Https
 			if HTTPS:
 				try:
-					connection = ssl.wrap_socket(connection,server_side=True,certfile=SSL_CERT_PATH,keyfile=SSL_KEY_PATH)#SSLify the connection
+					connection = SSL_Context.wrap_socket(connection, server_side=True)#HTTPSify the connection
 				except Exception, e:
 					connection.close()#Close off socket on failure to connect to ssl.
 					continue#skip to the next connection.
@@ -862,7 +882,7 @@ try:
 	#start http & https
 	if SSLEnabled:
 		#start HTTPS on seprate Process (Creates new instance of all variables)
-		HTTPSProc = Process(target=Serv_HTTP, args=(1,SSock,(Server_file_path+"SSL_Cert/"+SSL_CERT),(Server_file_path+"SSL_Cert/"+SSL_KEY)))
+		HTTPSProc = Process(target=Serv_HTTP, args=(1,SSock,SSL_Context))
 		HTTPSProc.start()
 		#start HTTPS on seprate Process (Creates new instance of all variables)
 	Serv_HTTP(0,Sock)#start HTTP on main thread
