@@ -49,15 +49,15 @@ Working_Directory = "%/root/"# % = execution directory(i.e:- where server root i
 MAX_CONT_SIZE = 52428800 #50MB, Max size of post data
 MAX_WAIT_TIME_Request = 3 #Max time(in seconds) for HTTP request to come through
 MAX_WAIT_TIME_Data = 3#Max Wait time(in seconds) for additional data from request(per chunk)
-MAX_SEND_TIME_DATA = 10#Max time(in seconds) for data to be sent out of the buffer
+MAX_SEND_TIME_DATA = 5#Max time(in seconds) for data to be sent out of the buffer
 BuffSize = 1024#Size of buffer for short transfers
-LargeBuffSize = 10240#Size of buffer for Files being served via service & HTTP request receival 
+LargeBuffSize = 4096#Size of buffer for Files being served via service & HTTP request receival 
 SSL_CERT = "server.crt"#Name of ssl certificate(should be in Server_Files/SSL_Cert/)
 SSL_KEY = "server.key"#Name of ssl key(should be in Server_Files/SSL_Cert/)
 #Play around with these to fine tune it to your machine & use case
 NumberOfServicesPerThread = 12#number of connections on one thread [should be around 8 - 15]
 ServiceThreadLimit = 18#Max number of threads to allow server to create(per instance i.e:- http & https) [should be near 15-50,as they run on one core]
-Min_Active_ServiceThreads = 1#Minimum active threads(I.E:-dont kill this service thread even if it has no work)[should be near 0-3]
+Min_Active_ServiceThreads = 0#Minimum active threads(I.E:-dont kill this service thread even if it has no work)[should be near 0-3]
 #Play around with these to fine tune it to your machine & use case
 #User Changeable
 
@@ -722,11 +722,12 @@ def Threaded_Service(My_ID,time_out):
 				if (transfer[3] < transfer[4]):
 					Addback.append(transfer)
 				else:
-					transfer[2].close()
-					transfer[0].close()
+					transfer[2].close()#make sure to close file.
+					transfer[0].close()#make sure to close socket.
 					DOS_Protect.Remove_Address(transfer[1])
 			except :
-				pass
+				transfer[2].close()#make sure to close file.
+				transfer[0].close()#make sure to close socket.
 		Remaining_Transfers = Addback
 		#Send out data to buffer on requests
 		try:
@@ -742,12 +743,14 @@ def Threaded_Service(My_ID,time_out):
 					#DOS check
 					if (my_job[0] in ready_to_read):
 						File_Obj = Analyse_Request(my_job[0],my_job[1],my_job[2])#Run job
-						Active_Requests[My_ID].remove(my_job)#Remove from active list	
+						Active_Requests[My_ID].remove(my_job)#Remove from active list
+						#Move Job to Remaining transfers if there is data left to be sent
 						if File_Obj:
 							Remaining_Transfers.append([my_job[0],my_job[1],File_Obj[0],0,File_Obj[1]])#add to que
 						else:
 							DOS_Protect.Remove_Address(my_job[1])#Remove from concurrency list
 							my_job[0].close()#Connection completed
+						#Move Job to Remaining transfers if there is data left to be sent
 					else:
 						if ((time.time()-my_job[3])>time_out):
 							DOS_Protect.Remove_Address(my_job[1])#Remove from concurrency list
