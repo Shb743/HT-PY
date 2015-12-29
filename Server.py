@@ -44,7 +44,7 @@ SSLPort = 443#Port for HTTPS
 SSLEnabled = 0#HTTPS on/off
 PHPEnabled = 0#PHP on/off
 Logging = 0#Should The Server Log stuff?
-ErrorLogging = 0#Should Server Log Exceptions.[To be implemented]
+ErrorLogging = 1#Should Server Log Exceptions(only ones that occure after Server is up).
 Working_Directory = "%/root/"# % = execution directory(i.e:- where server root is set,Custom.py & PHP will be executed,and where allowed directories * will be set)
 MAX_CONT_SIZE = 52428800 #50MB, Max size of post data
 MAX_WAIT_TIME_Request = 3 #Max time(in seconds) for HTTP request to come through
@@ -258,6 +258,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 	global Port
 	global Ip
 	global BuffSize
+	global ErrorLogging
 	#Globals
 	#Vars
 	Cont="" #Define Response Content
@@ -285,6 +286,10 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 
 		#Check for Custom Handling
 		Cont,Mime,Custom_Headers,Cont_File_Path = Custom.GET(Content_Name,Content_Path,Url_parameters,Mime,RAW_DATA,HTTPS)#Check for Custom input
+		#Kill upon failure
+		if (Cont == 0):
+			return 0
+		#Kill upon failure
 		#If file path is output
 		if ((Cont == "")&(Cont_File_Path!="")):
 			Content_Name = ""#Zero out old file
@@ -335,6 +340,10 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 					con.send(Forbidden(0,1,Content_Path+Content_Name))#404 Not Found
 					return 0#Kill connection
 			except Exception, e:
+				#Log errors
+				if ErrorLogging:
+					DOS_Protect.ELog_Out.append(str(e)+" :exception at 1\n\n")
+				#Log errors
 				File_Obj.close()
 				con.send(Forbidden(0,1,Content_Path+Content_Name))#404 Not Found
 				return 0#Kill connection
@@ -367,8 +376,11 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 					else:
 						con.send(File_Obj.read(BuffSize))
 						Cont_Count+=BuffSize
-			except :
-				pass
+			except Exception,i:
+				#Log errors
+				if ErrorLogging:
+					DOS_Protect.ELog_Out.append(str(i)+" :exception at 2\n\n")
+				#Log errors
 		#Send
 		#Close any file
 		if not(File_Obj == None):
@@ -443,6 +455,10 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 							raise Exception
 						#Make sure not null
 					except Exception, e:
+						#Log errors
+						if ErrorLogging:
+							DOS_Protect.ELog_Out.append(str(e)+" :exception at 3\n\n")
+						#Log errors
 						Incomplete_Post = 1#Stop processing request
 						break#Leave loop file not Recieved
 					#Prevent Crash upon file failure
@@ -459,7 +475,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 						#Remove Post Headers
 					#Check For Post data Headers
 					#Make sure file sent is not larger than stated
-					if ((Recieved-Content_Len)>1024):
+					if ((Recieved-Content_Len)>BuffSize):
 						Incomplete_Post = 1#Stop processing request
 						break#Leave loop file not Recieved
 					#Make sure file sent is not larger than stated
@@ -489,6 +505,10 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 							raise Exception
 						#Make Sure not Null
 					except Exception, e:
+						#Log errors
+						if ErrorLogging:
+							DOS_Protect.ELog_Out.append(str(e)+" :exception at 4\n\n")
+						#Log errors
 						Incomplete_Post = 1#Stop processing request
 						break#Leave loop file not Recieved
 					#Prevent Crash upon file failure
@@ -540,7 +560,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 					Custom_Headers+=tmp_headers
 			else:
 				con.send(Forbidden(0,1,Content_Path+Content_Name))#404 Not Found
-				return 0#Kill connection
+				Cont = 0#Report Failure
 		#Deal with Special documents(Only do so if not custom handled).
 	
 
@@ -553,6 +573,11 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 		except:
 			pass#File may have been deleted by Custom function or PHP
 		#Close POST_DATA and delete file if it is one
+
+		#Kill upon failure
+		if (Cont == 0):
+			return 0
+		#Kill upon failure
 
 		#Deal with response
 		con.settimeout(MAX_SEND_TIME_DATA)#time out on data send
@@ -571,7 +596,10 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 					con.send(Out_Obj.read(BuffSize))
 					Cont_Count+=BuffSize
 			except Exception, e:
-				pass
+				#Log errors
+				if ErrorLogging:
+					DOS_Protect.ELog_Out.append(str(e)+" :exception at 5\n\n")
+				#Log errors
 			Out_Obj.close()#Close output object
 			#Special case where output is a file
 		else:
@@ -581,8 +609,9 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 		#Deal with response
 
 		#Terminate
-		return 0#place live connection stub here as well
+		return 0
 		#Terminate
+	return 0#just in case
 	#Handle Requests	
 #RESPOND
 
@@ -595,6 +624,7 @@ def Analyse_Request(con,addr,HTTPS):
 	global Working_Directory
 	global Default
 	global On
+	global ErrorLogging
 	#Globals
 
 	#Recieve Request
@@ -603,12 +633,20 @@ def Analyse_Request(con,addr,HTTPS):
 	try:
 		while On:
 			tmp = con.recv(LargeBuffSize)
-			if not tmp: break
+			if not tmp: break#Stop if invalid data detected
 			Data += tmp
-			if ("\r\n\r\n" in Data):break
+			if ("\r\n\r\n" in Data):break#Stop if End of HTTP detected
 	except Exception, e:
+		#Log errors
+		if ErrorLogging:
+			DOS_Protect.ELog_Out.append(str(e)+" :exception at 6\n\n")
+		#Log errors
 		return 0#Stop Response
 	Data = Data.split("\n")#Get Data
+	#Chrome sends blank request fro some reason
+	if (Data == ['']):
+		return 0
+	#Chrome sends blank request fro some reason
 	#Recieve Request
 	#Process Data
 	try:
@@ -672,7 +710,7 @@ def Analyse_Request(con,addr,HTTPS):
 		#Log Stuff
 		if Logging:
 			#Create Log Entry
-			Log_Entry = "IP:"+addr+"	|Request Type:"+Request_Type+"	|Requested Content:"+File_Name+"	|"
+			Log_Entry = "IP:"+addr+"	|Request Type:"+Request_Type+"	|Requested Content:"+File_Name+"	|HTTPS:"+str(HTTPS)+"	|"
 			Log_Entry+= "Passed Parameters:"+Url_parameters+"	|"
 			Log_Entry+= "Date:"+str(datetime.datetime.utcnow().day)+"/"+str(datetime.datetime.utcnow().month)+"/"+str(datetime.datetime.utcnow().year)+"	|"
 			Log_Entry+="Time:"+str(datetime.datetime.utcnow().hour)+":"+str(datetime.datetime.utcnow().minute)+"\n\n"
@@ -681,9 +719,12 @@ def Analyse_Request(con,addr,HTTPS):
 		#Log Stuff
 		return Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,Data,"close",HTTPS)#Send Response Connection-close/Keep-Alive
 	except Exception, e:
-		print e
+		#Log errors
+		if ErrorLogging:
+			DOS_Protect.ELog_Out.append(str(e)+" :exception at 7\n\n")
+		#Log errors
 	#Process Data
-	return 0
+	return 0#Failure ?
 #Log Ip addresses and Analyse args*
 
 
@@ -725,7 +766,11 @@ def Threaded_Service(My_ID,time_out):
 					transfer[2].close()#make sure to close file.
 					transfer[0].close()#make sure to close socket.
 					DOS_Protect.Remove_Address(transfer[1])
-			except :
+			except Exception,i:
+				#Log errors
+				if ErrorLogging:
+					DOS_Protect.ELog_Out.append(str(i)+" :exception at 8\n\n")
+				#Log errors
 				transfer[2].close()#make sure to close file.
 				transfer[0].close()#make sure to close socket.
 		Remaining_Transfers = Addback
@@ -771,11 +816,14 @@ def Threaded_Service(My_ID,time_out):
 				time.sleep(0.05)#IDLE for 50ms so as to not use up cpu
 			#check if i may kill my self
 		except Exception, e:
-			print e
 			#Release locked up thread
 			if TLock.locked():
 				TLock.release()#Release threading :O
 			#Release locked up thread
+			#Log errors
+			if ErrorLogging:
+				DOS_Protect.ELog_Out.append(str(e)+" :exception at 9\n\n")
+			#Log errors
 			#Running = 0#Kill service
 	#print "trying to kill my self here: "+My_ID
 	#print str(len(Active_ServiceThreads)) + ' threads are active'
@@ -813,6 +861,7 @@ try:
 	#Serve
 	#SSL_CERT_PATH="",SSL_KEY_PATH="",
 	def Serv_HTTP(HTTPS,Sock,SSL_Context=None):
+		#Globals
 		global On
 		global ServiceThreadLimit
 		global Min_Active_ServiceThreads
@@ -820,6 +869,8 @@ try:
 		global Active_Requests
 		global Active_ServiceThreads
 		global TLock
+		global ErrorLogging
+		#Globals
 		DOS_Protect.Init()#Begin DOS protection service
 		#Create Min Services
 		for i in range(Min_Active_ServiceThreads):
@@ -856,6 +907,10 @@ try:
 				try:
 					connection = SSL_Context.wrap_socket(connection, server_side=True)#HTTPSify the connection
 				except Exception, e:
+					#Log errors
+					if ErrorLogging:
+						DOS_Protect.ELog_Out.append(str(e)+" :exception at 10\n\n")
+					#Log errors
 					connection.close()#Close off socket on failure to connect to ssl.
 					continue#skip to the next connection.
 			#If Https
@@ -890,7 +945,12 @@ try:
 		#start HTTPS on seprate Process (Creates new instance of all variables)
 	Serv_HTTP(0,Sock)#start HTTP on main thread
 	#start http & https
-except :
+except Exception,e:
+	#Log errors
+	if ErrorLogging:
+		DOS_Protect.ELog_Out.append(str(e)+"\n\n")
+		time.sleep(4)#Wait For log to write out
+	#Log errors
 	DOS_Protect.On = 0#Shutdown DOS protection
 	On = 0#Shutdown any Loops on core server
 	#SSL
@@ -904,6 +964,22 @@ except :
 	Sock.close()#Kill the socket
 	SSock.close()#Kill the socket
 	sys.exit("Dead")#State Death
+except:
+	#Key board Exceptions
+	DOS_Protect.On = 0#Shutdown DOS protection
+	On = 0#Shutdown any Loops on core server
+	#SSL
+	if HTTPSProc:
+		HTTPSProc.terminate()#Terminate https process
+	#SSL
+	#Release locked up thread
+	if TLock.locked():
+		TLock.release()#Release threading :O
+	#Release locked up thread
+	Sock.close()#Kill the socket
+	SSock.close()#Kill the socket
+	sys.exit("Dead")#State Death
+	#Key board Exceptions
 #MAIN
 #Shut Down(Ensurance)
 DOS_Protect.On = 0#Shutdown DOS protection

@@ -14,6 +14,7 @@ Blocked_Candidates = []
 On = 1#Is service Active
 Max_Concurrent_Requests = 30#Should be increased if large number of connections are expected
 Log_Out = []#Logging
+ELog_Out = []#Error Logging
 #Globals
 
 print "DOS protection service ready to start..."#on import
@@ -60,12 +61,18 @@ def Check():
 		#Logging
 		if (Log_Out != []):
 			Log_object = open(File_Path+"Server_Files/Logs/Log.dat", "a")#Open Log File
-			for Log_Entry in Log_Out:
-				Log_object.write(Log_Entry)
-			Log_Out = []
+			for i in range(len(Log_Out)):
+				Log_object.write(Log_Out.pop())
 			Log_object.close()
 		#Logging
-		time.sleep(3.5)#Check every few seconds,i.e:- allow other threads to execute
+		#Error-Logging
+		if (ELog_Out != []):
+			ELog_object = open(File_Path+"Server_Files/Logs/ErrorLog.dat", "a")#Open Log File
+			for i in range(len(ELog_Out)):
+				ELog_object.write(ELog_Out.pop())
+			ELog_object.close()
+		#Error-Logging
+		time.sleep(3.5)#Check every few seconds,i.e:- allow other threads to execute & dont hog cpu
 	#Perform Checks
 #Security Checks
 

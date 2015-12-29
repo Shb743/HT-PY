@@ -7,9 +7,9 @@
 import os,sys,GF
 #Escaping php
 try:
-	from pipes import quote
+	from pipes import quote#Python 2.7
 except ImportError:
-	from shlex import quote
+	from shlex import quote#Just incase someone wants to port over to python 3
 #Escaping php
 #IMPORTS
 
@@ -145,9 +145,9 @@ os.chdir(WD)#Reset working Dir
 #Communicate
 def subprocess_cmd(command,InData,cwdd,MAX_PHP_EXECUTION_TIME):
 	#print command+'\n'+str(InData)+"\n\n\n"
-	process = subprocess.Popen(command,stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True,cwd=cwdd)
-	proc_stdout = ""
 	try:
+		process = subprocess.Popen(command,stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True,cwd=cwdd)
+		proc_stdout = ""
 		if (InData!=None):
 			proc_stdout = process.communicate(input=InData,timeout=MAX_PHP_EXECUTION_TIME)[0].strip()
 		else:

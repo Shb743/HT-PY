@@ -6,7 +6,8 @@
 
 #If you want output to be a file(good if output is large to save ram)use Final_Output_File_Path,only used if Final_Output_Content is empty.
 #BE CAREFUL Final_Output_File_Path bypasses the allowed folders security checks so it can compromise the entire filesystem if handled incorrectly.
-#If returning empty content & path Server will follow usual routine[I.e:- returning files].
+#If returning empty content & path Server will follow usual routine[I.e:- returning files/php].
+#If returning 0 as content Server will kill the connection.
 #Custom Headers must follow HTTP protocol,EG:- "Accept-Ranges: bytes\n" [don't forget new line after each header]
 #Examples are there to help you understand how the code works,they can and should be deleted after you do.
 
@@ -131,7 +132,7 @@ def Forbidden(File_Name):
 #	return None#No User Agent.
 #User Agent
 
-#Cookie
+#Cookies
 #def Get_Cookies(RAW_DATA):
 #	#Get Cookies
 #	for SubData in RAW_DATA:
@@ -139,4 +140,4 @@ def Forbidden(File_Name):
 #			return SubData.split(":")[1].strip()
 #	#Get Cookies 
 #	return None#No Cookies.
-#Cookie
+#Cookies
