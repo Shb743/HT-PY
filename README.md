@@ -13,6 +13,7 @@ If PHP support is a requirement then GCC and python dev tools are needed as well
 
 For HTTPS support Open-SSL is required.
 
+*Note: I have not tested this on windows.
 
 #Author:Shoaib Omar (C) 2015
 example of website running on HT&PY: http://shoaib.zzzz.io | https://shoaib.zzzz.io *Currently incomplete

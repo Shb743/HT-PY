@@ -1,7 +1,13 @@
 *White List
 -enabled:N
--Adresslist = [""]
+-Adresslist = ["192.168.0.1","127.0.0.1"]
 
 *Black List
 -enabled:N
--Adresslist = [""]
+-Adresslist = ["111.111.111.111","0.0.0.0"]
+
+*Ciphers
+-enabled:N
+CipherString = ALL:!ADH:!RC4+RSA:+HIGH:+MEDIUM:!LOW:!SSLv2:!EXPORT
+
+#Note CipherString above not recomended it's just an example
