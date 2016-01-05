@@ -21,8 +21,6 @@ import time#Time out,sleeping etc...
 
 #Should not be messed with!(you can change them,but I don't advise it)
 TLock = threading.Lock()#Thread Lock for safe cross threading
-Sock = socket.socket()#Define Sock.
-SSock = socket.socket()#Define Sock for SSL.
 HTTPSProc = None#Define process for SSL.
 On = 1#Is the Server Running.
 Server_file_path = os.getcwd()+"/Server_Files/"#Server Path.
@@ -40,6 +38,7 @@ Socket_Backlog = 5#MAX number of clients waiting to be accepted(in que).
 #User Changeable
 Ip=""#IP(if left blank will bind to all available interfaces)
 Port = 80#Port
+HTTPEnabled = 1#HTTP on/off
 SSLPort = 443#Port for HTTPS
 SSLEnabled = 0#HTTPS on/off
 PHPEnabled = 0#PHP on/off
@@ -57,7 +56,7 @@ SSL_KEY = "server.key"#Name of ssl key(should be in Server_Files/SSL_Cert/)
 #Play around with these to fine tune it to your machine & use case
 NumberOfServicesPerThread = 12#number of connections on one thread [should be around 8 - 15]
 ServiceThreadLimit = 18#Max number of threads to allow server to create(per instance i.e:- http & https) [should be near 15-50,as they run on one core]
-Min_Active_ServiceThreads = 0#Minimum active threads(I.E:-dont kill this service thread even if it has no work)[should be near 0-3]
+Min_Active_ServiceThreads = 1#Minimum active threads(I.E:-dont kill this service thread even if it has no work)[should be near 0-3]
 #Play around with these to fine tune it to your machine & use case
 #User Changeable
 
@@ -751,8 +750,8 @@ def Threaded_Service(My_ID,time_out):
 		#Send out data to buffer on requests
 		Addback = []
 		for i in range(len(Remaining_Transfers)):
+			transfer = Remaining_Transfers.pop()
 			try:
-				transfer = Remaining_Transfers.pop()
 				#DOS Check
 				if transfer[1] in DOS_Protect.Blocked_Candidates:
 					transfer[0].close()#Connection killed
@@ -766,10 +765,10 @@ def Threaded_Service(My_ID,time_out):
 					transfer[2].close()#make sure to close file.
 					transfer[0].close()#make sure to close socket.
 					DOS_Protect.Remove_Address(transfer[1])
-			except Exception,i:
+			except Exception,excp:
 				#Log errors
 				if ErrorLogging:
-					DOS_Protect.ELog_Out.append(str(i)+" :exception at 8\n\n")
+					DOS_Protect.ELog_Out.append(str(excp)+" :exception at 8\n\n")
 				#Log errors
 				transfer[2].close()#make sure to close file.
 				transfer[0].close()#make sure to close socket.
@@ -847,125 +846,134 @@ def Create_Service_Thread():
 
 #MAIN
 try:
-	#INIT
-	#Set up socks
-	Sock.bind((Ip,Port))#Bind socket to port
-	Sock.listen(Socket_Backlog)#Start listening
-	if SSLEnabled:
-		SSock.bind((Ip,SSLPort))#Bind to SSL port
-		SSock.listen(Socket_Backlog)#Start listening
-	#Set up socks
-	print ""
-	print("Server Active!")#PRINT
-	#INIT
 	#Serve
-	#SSL_CERT_PATH="",SSL_KEY_PATH="",
-	def Serv_HTTP(HTTPS,Sock,SSL_Context=None):
+	def Serv_HTTP(HTTPS,SSL_Context=None):
 		#Globals
-		global On
+		#Service Threads
 		global ServiceThreadLimit
 		global Min_Active_ServiceThreads
 		global NumberOfServicesPerThread
 		global Active_Requests
 		global Active_ServiceThreads
 		global TLock
+		#Service Threads
+		#Logging
 		global ErrorLogging
+		#Logging
+		#Base
+		global On
+		global SSLPort
+		global Socket_Backlog
+		global Ip
+		global Port
+		#Base
 		#Globals
+		#INIT
+		#Base
+		Sock = socket.socket()#Define Sock.
+		try:
+			if HTTPS:
+				Sock.bind((Ip,SSLPort))#Bind to SSL port
+				Sock.listen(Socket_Backlog)#Start listening
+				print("HTTPS Server Active!")
+			else:
+				Sock.bind((Ip,Port))#Bind socket to port
+				Sock.listen(Socket_Backlog)#Start listening
+				print("HTTP Server Active!")#PRINT
+		except Exception, err:
+			print err
+			On = 0#Shutdown any Loops on HTTPS server
+			DOS_Protect.On = 0#Shutdown DOS protection
+			sys.exit("Dead")#State Death
+		#Base
 		DOS_Protect.Init()#Begin DOS protection service
 		#Create Min Services
 		for i in range(Min_Active_ServiceThreads):
 			Create_Service_Thread()
 		#Create Min Services
+		#INIT
+		#Main Loop
 		while On:
-			# wait for next client to connect
-			connection, address = Sock.accept() # connection is a new socket
+			try:
+				# wait for next client to connect
+				connection, address = Sock.accept() # connection is a new socket
 
-			#Check DOS List
-			if (address[0] in DOS_Protect.Blocked_Candidates):
-				connection.close()#Do not waste any more resources on the DOSer
-				continue#skip to the next connection.
-			#Check DOS List
-
-			#Check White_List
-			if White_List != None:
-				if not(address[0] in White_List):
-					connection.send(Forbidden())#Tell them their not allowed
-					connection.close()
+				#Check DOS List
+				if (address[0] in DOS_Protect.Blocked_Candidates):
+					connection.close()#Do not waste any more resources on the DOSer
 					continue#skip to the next connection.
-			#Check White_List
+				#Check DOS List
 
-			#Check Black_List
-			if Black_List != None:
-				if (address[0] in Black_List):
-					connection.send(Forbidden())#Tell them their not allowed
-					connection.close()
-					continue#skip to the next connection.
-			#Check Black_List
+				#Check White_List
+				if White_List != None:
+					if not(address[0] in White_List):
+						connection.send(Forbidden())#Tell them their not allowed
+						connection.close()
+						continue#skip to the next connection.
+				#Check White_List
 
-			#If Https
-			if HTTPS:
-				try:
+				#Check Black_List
+				if Black_List != None:
+					if (address[0] in Black_List):
+						connection.send(Forbidden())#Tell them their not allowed
+						connection.close()
+						continue#skip to the next connection.
+				#Check Black_List
+
+				#If Https
+				if HTTPS:
 					connection = SSL_Context.wrap_socket(connection, server_side=True)#HTTPSify the connection
-				except Exception, e:
-					#Log errors
-					if ErrorLogging:
-						DOS_Protect.ELog_Out.append(str(e)+" :exception at 10\n\n")
-					#Log errors
-					connection.close()#Close off socket on failure to connect to ssl.
-					continue#skip to the next connection.
-			#If Https
+				#If Https
 
-			#Accept Connection
-			Accepted = 0
-			TLock.acquire()#Lock threading :#
-			for Active_Service in Active_ServiceThreads:
-				if (len(Active_Requests[Active_Service]) < NumberOfServicesPerThread):
-					Active_Requests[Active_Service].append([connection,address[0],HTTPS,time.time()])
-					Accepted = 1
+				#Accept Connection
+				Accepted = 0
+				TLock.acquire()#Lock threading :#
+				for Active_Service in Active_ServiceThreads:
+					if (len(Active_Requests[Active_Service]) < NumberOfServicesPerThread):
+						Active_Requests[Active_Service].append([connection,address[0],HTTPS,time.time()])
+						Accepted = 1
+						#Add to Candidate list for dos
+						DOS_Protect.Add_Address(address[0])
+						#Add to Candidate list for dos
+						break#Stop for loop
+				TLock.release()#Release threading :O
+				if ((len(Active_ServiceThreads) < ServiceThreadLimit)&(Accepted == 0)):
+					ID = Create_Service_Thread()
+					Active_Requests[ID].append([connection,address[0],HTTPS,time.time()])
 					#Add to Candidate list for dos
 					DOS_Protect.Add_Address(address[0])
 					#Add to Candidate list for dos
-					break#Stop for loop
-			TLock.release()#Release threading :O
-			if ((len(Active_ServiceThreads) < ServiceThreadLimit)&(Accepted == 0)):
-				ID = Create_Service_Thread()
-				Active_Requests[ID].append([connection,address[0],HTTPS,time.time()])
-				#Add to Candidate list for dos
-				DOS_Protect.Add_Address(address[0])
-				#Add to Candidate list for dos
-			elif(Accepted==0):
-				connection.close()#No space
-			#Accept Connection
+				elif(Accepted==0):
+					connection.close()#No space
+				#Accept Connection
+			except Exception, err:
+				#Log errors
+				if ErrorLogging:
+					DOS_Protect.ELog_Out.append(str(err)+" :exception at 10\n\n")
+				#Log errors
+				continue#skip to the next connection.
+		Sock.close()#Kill the socket
+		#Main Loop
 	#Serve
-	#start http & https
-	if SSLEnabled:
-		#start HTTPS on seprate Process (Creates new instance of all variables)
-		HTTPSProc = Process(target=Serv_HTTP, args=(1,SSock,SSL_Context))
-		HTTPSProc.start()
-		#start HTTPS on seprate Process (Creates new instance of all variables)
-	Serv_HTTP(0,Sock)#start HTTP on main thread
-	#start http & https
-except Exception,e:
-	#Log errors
-	if ErrorLogging:
-		DOS_Protect.ELog_Out.append(str(e)+"\n\n")
-		time.sleep(4)#Wait For log to write out
-	#Log errors
-	DOS_Protect.On = 0#Shutdown DOS protection
-	On = 0#Shutdown any Loops on core server
-	#SSL
-	if HTTPSProc:
-		HTTPSProc.terminate()#Terminate https process
-	#SSL
-	#Release locked up thread
-	if TLock.locked():
-		TLock.release()#Release threading :O
-	#Release locked up thread
-	Sock.close()#Kill the socket
-	SSock.close()#Kill the socket
-	sys.exit("Dead")#State Death
+	#Start Serving
+	print ""#Move to next line
+	if HTTPEnabled:
+		#HTTPS
+		if SSLEnabled:
+			#start HTTPS on seprate Process (Creates new instance of all variables)
+			HTTPSProc = Process(target=Serv_HTTP, args=(1,SSL_Context))
+			HTTPSProc.start()
+			#start HTTPS on seprate Process (Creates new instance of all variables)
+		#HTTPS
+		#HTTP
+		Serv_HTTP(0)
+		#HTTP
+	elif SSLEnabled:
+		#HTTPS
+		Serv_HTTP(1,SSL_Context)
+		#HTTPS
+	#Start Serving
 except:
-	#Key board Exceptions
 	DOS_Protect.On = 0#Shutdown DOS protection
 	On = 0#Shutdown any Loops on core server
 	#SSL
@@ -976,10 +984,7 @@ except:
 	if TLock.locked():
 		TLock.release()#Release threading :O
 	#Release locked up thread
-	Sock.close()#Kill the socket
-	SSock.close()#Kill the socket
 	sys.exit("Dead")#State Death
-	#Key board Exceptions
 #MAIN
 #Shut Down(Ensurance)
 DOS_Protect.On = 0#Shutdown DOS protection
@@ -988,7 +993,5 @@ On = 0#Shutdown any Loops on core server
 if HTTPSProc:
 	HTTPSProc.terminate()#Terminate https process
 #SSL
-Sock.close()#Kill the socket
-SSock.close()#Kill the socket
 sys.exit("Dead")#State Death
 #Shut Down(Ensurance)

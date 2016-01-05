@@ -1,8 +1,8 @@
 SUDO SHB do list...
 ----------------
-FIX SSL sock transfer multiproccesing pickle error(windows issue for ssl)
-
 Check if socket is writable before writting to it (FRUSTRATING have to deal with three diferent methods one for linux one for mac and another for win32 as sockets work differently on these three OS's)
+
+Re-Check Timeouts 
 
 Dont mark job as inactive till transfer complete whilst not trying to re-read from it :#(look at old code)
 
@@ -20,7 +20,7 @@ Make Server cross compatible with python 3
 
 TEST ACROSS ALL PLATFORMS[VM's FTW]
 
-MAKE SERVER more resistant TO DOS ATTACKS [LAST THING LEFT TODO]
+MAKE SERVER more resistant TO DOS ATTACKS
 *Remeber to check if you messed up using diff ~/GitHub/HT-PY/CodeFileName.py ~/Code/Python/HT-PY/CodeFileName.py
 *Remeber to delete files in root&Server_Files Directories for backups [:
 *Remeber to create php-less version and php versions of server for upload.
