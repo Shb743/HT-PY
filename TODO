@@ -1,5 +1,7 @@
 SUDO SHB do list...
 ----------------
+Either Add file-locks OR Use seperate files for https & http for logging as they could clash by writting to file at same time
+
 Check if socket is writable before writting to it (FRUSTRATING have to deal with three diferent methods one for linux one for mac and another for win32 as sockets work differently on these three OS's)
 
 Re-Check Timeouts 
