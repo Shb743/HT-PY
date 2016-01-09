@@ -42,7 +42,7 @@ HTTPEnabled = 1#HTTP on/off
 SSLPort = 443#Port for HTTPS
 SSLEnabled = 0#HTTPS on/off
 PHPEnabled = 0#PHP on/off
-Logging = 0#Should The Server Log stuff?
+Logging = 1#Should The Server Log stuff?
 ErrorLogging = 1#Should Server Log Exceptions(only ones that occur after Server is up).
 Working_Directory = "%/root/"# % = execution directory(i.e:- where server root is set,Custom.py & PHP will be executed,and where allowed directories * will be set)
 MAX_CONT_SIZE = 52428800 #50MB, Max size of post data
@@ -219,7 +219,7 @@ def Check_Directory(File_Path):
 	for AllwdDir in Allowed_Directories:
 		if ((File_Path == AllwdDir)or(File_Path == AllwdDir[:-1])or(File_Path[:-1] == AllwdDir)):
 			return 1#Success
-		elif(((AllwdDir[:-1] in File_Path)or(AllwdDir[:-2] in File_Path)) & (AllwdDir[-1:] == "@")):
+		elif(((AllwdDir[:-1] in File_Path)or(AllwdDir[:-2] in File_Path)) & (AllwdDir[-1] == "@")):
 			return 1#Success
 	#Check directory
 	return 0#Failed
@@ -709,10 +709,10 @@ def Analyse_Request(con,addr,HTTPS):
 		#Log Stuff
 		if Logging:
 			#Create Log Entry
-			Log_Entry = "IP:"+addr+"	|Request Type:"+Request_Type+"	|Requested Content:"+File_Name+"	|HTTPS:"+str(HTTPS)+"	|"
+			Log_Entry = "IP:"+addr+"	|Request Type:"+Request_Type+"	|Requested Content:"+File_Name+"	|"
 			Log_Entry+= "Passed Parameters:"+Url_parameters+"	|"
-			Log_Entry+= "Date:"+str(datetime.datetime.utcnow().day)+"/"+str(datetime.datetime.utcnow().month)+"/"+str(datetime.datetime.utcnow().year)+"	|"
-			Log_Entry+="Time:"+str(datetime.datetime.utcnow().hour)+":"+str(datetime.datetime.utcnow().minute)+"\n\n"
+			Log_Entry+= "Date:"+datetime.datetime.now().strftime('%D')+"	|"
+			Log_Entry+="Time:"+datetime.datetime.now().strftime('%H:%M')+"\n\n"
 			#Create Log Entry
 			DOS_Protect.Log_Out.append(Log_Entry)#Add to Logging que
 		#Log Stuff
@@ -873,13 +873,22 @@ try:
 		Sock = socket.socket()#Define Sock.
 		try:
 			if HTTPS:
+				#Change LOG file names
+				DOS_Protect.ErrorLogFile+="S"
+				DOS_Protect.LogFile+="S"
+				DOS_Protect.DOSFile+="S"
+				#Change LOG file names
+				#Configure socket
 				Sock.bind((Ip,SSLPort))#Bind to SSL port
 				Sock.listen(Socket_Backlog)#Start listening
+				#Configure socket
 				print("HTTPS Server Active!")
 			else:
+				#Configure socket
 				Sock.bind((Ip,Port))#Bind socket to port
 				Sock.listen(Socket_Backlog)#Start listening
-				print("HTTP Server Active!")#PRINT
+				#Configure socket
+				print("HTTP Server Active!")
 		except Exception, err:
 			print err
 			On = 0#Shutdown any Loops on HTTPS server

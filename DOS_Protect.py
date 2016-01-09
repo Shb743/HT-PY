@@ -15,6 +15,11 @@ On = 1#Is service Active
 Max_Concurrent_Requests = 30#Should be increased if large number of connections are expected
 Log_Out = []#Logging
 ELog_Out = []#Error Logging
+#FileName & path for Logs(For HTTPS logs an S will be added to end of the name)
+ErrorLogFile=File_Path+"Server_Files/Logs/ErrorLog"
+LogFile=File_Path+"Server_Files/Logs/Log"
+DOSFile=File_Path+"Server_Files/Logs/DOS"
+#FileName & path for Logs(For HTTPS logs an S will be added to end of the name)
 #Globals
 
 print "DOS protection service ready to start..."#on import
@@ -44,7 +49,8 @@ def Check():
 	global Blocked_Candidates
 	global DOS_Candidates
 	global Log_Out
-	global File_Path
+	global LogFile
+	global ErrorLogFile
 	#Globals
 	#Perform Checks
 	while On:
@@ -60,14 +66,14 @@ def Check():
 		#Clear doser
 		#Logging
 		if (Log_Out != []):
-			Log_object = open(File_Path+"Server_Files/Logs/Log.dat", "a")#Open Log File
+			Log_object = open(LogFile+".dat", "a")#Open Log File
 			for i in range(len(Log_Out)):
 				Log_object.write(Log_Out.pop())
 			Log_object.close()
 		#Logging
 		#Error-Logging
 		if (ELog_Out != []):
-			ELog_object = open(File_Path+"Server_Files/Logs/ErrorLog.dat", "a")#Open Log File
+			ELog_object = open(ErrorLogFile+".dat", "a")#Open Log File
 			for i in range(len(ELog_Out)):
 				ELog_object.write(ELog_Out.pop())
 			ELog_object.close()
@@ -78,11 +84,12 @@ def Check():
 
 #Alert Server owner to Possible DOS
 def Possible_DOS_LOG(address):
-	global File_Path
-	DOS_LOG = open(File_Path+"Server_Files/Logs/DOS.dat","a+")
-	DOS_LOG.write("Added to DOS list:"+address+"\n")
-	DOS_LOG.write("Date:"+str(datetime.datetime.utcnow().day)+"/"+str(datetime.datetime.utcnow().month)+"/"+str(datetime.datetime.utcnow().year)+"\n")
-	DOS_LOG.write("Time:"+str(datetime.datetime.utcnow().hour)+":"+str(datetime.datetime.utcnow().minute)+"\n\n")
+	global DOSFile
+	DOS_LOG = open(DOSFile+".dat","a")
+	DLOGOUT = "Added to DOS list:"+address+"\n"
+	DLOGOUT += "Date:"+datetime.datetime.now().strftime('%D')+"\n"
+	DLOGOUT += "Time:"+datetime.datetime.now().strftime('%H:%M')+"\n\n"
+	DOS_LOG.write(DLOGOUT)
 	DOS_LOG.close()
 #Alert Server owner to Possible DOS
 
