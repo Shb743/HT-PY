@@ -38,10 +38,11 @@ File Upload example using the servers system on PHP:
 ---------------------------------------------------------
 <?php
 $uploadfile = $_SERVER['POST_FILE_PATH'];
-
+$givenfilename = $_SERVER['POST_FILE_NAME'];
+if ($givenfilename == ""){$givenfilename = "temp.tmp";}
 echo '<pre>';
 if ($uploadfile != ""){
-if (rename($uploadfile, $_SERVER['POST_FILE_NAME'])) {
+if (copy($uploadfile, $givenfilename)) {
     echo "File is valid, and was successfully uploaded.\n";
 } else {
     echo "ERROR!\n";
@@ -53,7 +54,7 @@ if (rename($uploadfile, $_SERVER['POST_FILE_NAME'])) {
 echo 'Here is some more debugging info:';
 echo($uploadfile);
 
-print "</pre>";
+echo '</pre>';
 ?>
 ---------------------------------------------------------
 

@@ -43,7 +43,7 @@ SSLPort = 443#Port for HTTPS
 SSLEnabled = 0#HTTPS on/off
 PHPEnabled = 0#PHP on/off
 Logging = 0#Should The Server Log stuff?
-ErrorLogging = 1#Should Server Log Exceptions(only ones that occure after Server is up).
+ErrorLogging = 1#Should Server Log Exceptions(only ones that occur after Server is up).
 Working_Directory = "%/root/"# % = execution directory(i.e:- where server root is set,Custom.py & PHP will be executed,and where allowed directories * will be set)
 MAX_CONT_SIZE = 52428800 #50MB, Max size of post data
 MAX_WAIT_TIME_Request = 3 #Max time(in seconds) for HTTP request to come through
