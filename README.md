@@ -15,5 +15,5 @@ For HTTPS support Open-SSL is required.
 
 *Note: I have not tested this on windows.
 
-#Author:Shoaib Omar (C) 2015
+#Author:Shoaib Omar
 example of website running on HT&PY: http://shoaib.zzzz.io | https://shoaib.zzzz.io *Website is running but not finished.
