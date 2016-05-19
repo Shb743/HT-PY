@@ -1,5 +1,5 @@
 #Author:Shoaib Omar (C) 2015
-#Modify HDANA if needed.
+#Modify HDANA[HeaderDuplicatesAreNotALlowed] if needed.
 #COLLECTION OF ALL FUNCTIONS NEEDED TO BE USED ACROSS SERVER(Global Functions)
 HDANA = ["content-type","accept-ranges","content-length","etag"]#-MUST BE IN LOWER CASE-HeaderDuplicatesAreNotALlowed these headers will have their values replaced if duplicate custom headers are present
 

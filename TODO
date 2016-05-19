@@ -1,26 +1,9 @@
 SUDO SHB do list...
 ----------------
-Check if socket is writable before writting to it (FRUSTRATING have to deal with three diferent methods one for linux one for mac and another for win32 as sockets work differently on these three OS's)
+FIX SSL SOCKET DEATH
 
-Re-Check Timeouts 
-
-Dont mark job as inactive till transfer complete whilst not trying to re-read from it :#(look at old code)
-
-Move POST file receives to active_transfers_list if greater than 10KB [so that POST's dont bog down entire service]
-
-Make Send return to service thread even if cont is not in a file obj so that badly coded custom code doesnt affect thread perfomance[:O]
-
-place try catch inside myjobs for loop so if it crahses you can deactivate that request instead of crash looping#UPDATE maynot be needed as try-catch on Analyse_Request would deal with this issue
-
-Redo Portfolio BG(make smaller dont use all the code,just some of it & take new pictures and recolor) & finish Portfolio
+Re-Read entire code base
 
 Put up links to downloadable(i.e:- with php without php,etc) copies of code on my website :#
 
-Make Server cross compatible with python 3
-
-TEST ACROSS ALL PLATFORMS[VM's FTW]
-
 MAKE SERVER more resistant TO DOS ATTACKS
-*Remeber to check if you messed up using diff ~/GitHub/HT-PY/CodeFileName.py ~/Code/Python/HT-PY/CodeFileName.py
-*Remeber to delete files in root&Server_Files Directories for backups [:
-*Remeber to create php-less version and php versions of server for upload.

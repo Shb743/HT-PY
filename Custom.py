@@ -26,7 +26,7 @@
 #IMPORTS
 
 #GLOABAL VARS
-Server_Working_Directory = ""
+Server_Working_Directory = ""#Is automatically defult working directory i.e root
 #GLOABAL VARS
 
 #Custom GET request Handling

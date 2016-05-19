@@ -11,15 +11,16 @@ import os
 File_Path = os.getcwd()+"/"
 DOS_Candidates = {}
 Blocked_Candidates = []
-On = 1#Is service Active
-Max_Concurrent_Requests = 30#Should be increased if large number of connections are expected
+On = 1#Is DOS_Protect Active
 Log_Out = []#Logging
 ELog_Out = []#Error Logging
+TLock = threading.Lock()#Thread Lock for safe cross threading
 #FileName & path for Logs(For HTTPS logs an S will be added to end of the name)
 ErrorLogFile=File_Path+"Server_Files/Logs/ErrorLog"
 LogFile=File_Path+"Server_Files/Logs/Log"
 DOSFile=File_Path+"Server_Files/Logs/DOS"
 #FileName & path for Logs(For HTTPS logs an S will be added to end of the name)
+Max_Concurrent_Requests = 30#Should be increased if a large number of connections(from each user) is expected[i.e:for bench marking]
 #Globals
 
 print "DOS protection service ready to start..."#on import
@@ -51,15 +52,20 @@ def Check():
 	global Log_Out
 	global LogFile
 	global ErrorLogFile
+	global TLock
 	#Globals
 	#Perform Checks
 	while On:
 		TBD = []
+		TLock.acquire()#Lock threading :#
+		#DOS Check
 		for Candidate in DOS_Candidates:
 			if (DOS_Candidates[Candidate] > Max_Concurrent_Requests):
 				Blocked_Candidates.append(Candidate)
 				TBD.append(Candidate)
 				Possible_DOS_LOG(Candidate)
+		#DOS Check
+		TLock.release()#Release threading :O
 		#Clear doser
 		for BD in TBD:
 			del DOS_Candidates[BD]
@@ -76,9 +82,10 @@ def Check():
 			ELog_object = open(ErrorLogFile+".dat", "a")#Open Log File
 			for i in range(len(ELog_Out)):
 				ELog_object.write(ELog_Out.pop())
+			ELog_object.write("Date:"+datetime.datetime.now().strftime('%D')+"\n"+"Time:"+datetime.datetime.now().strftime('%H:%M')+"\n\n\n")
 			ELog_object.close()
 		#Error-Logging
-		time.sleep(3.5)#Check every few seconds,i.e:- allow other threads to execute & dont hog cpu
+		time.sleep(5)#Check every few seconds,i.e:- allow other threads to execute & dont hold up threads too oftn
 	#Perform Checks
 #Security Checks
 

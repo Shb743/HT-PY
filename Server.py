@@ -32,7 +32,9 @@ SHB_Mime = []# SHB MIME !
 Default = ["index.html","index.php"] #Default file to load.
 Settings_file = "Settings.dat"#Load Settings.
 Allowed_Directories_File = "Allowed_Dirs.dat"#Load Allowed Directories Dat.
-Socket_Backlog = 5#MAX number of clients waiting to be accepted(in que).
+Socket_Backlog = 5#MAX number of clients waiting to be accepted(in socket que).
+SNTBLN = 5 # (Spawn New Thread BackLog Number - if the waiting_que size is greater than this a new service thread will be spawned)
+BuffSize = 1024#Size of buffer for recv
 #Should not be messed with!(you can change them,but I don't advise it)
 
 #User Changeable
@@ -46,17 +48,14 @@ Logging = 1#Should The Server Log stuff?
 ErrorLogging = 1#Should Server Log Exceptions(only ones that occur after Server is up).
 Working_Directory = "%/root/"# % = execution directory(i.e:- where server root is set,Custom.py & PHP will be executed,and where allowed directories * will be set)
 MAX_CONT_SIZE = 52428800 #50MB, Max size of post data
-MAX_WAIT_TIME_Request = 3 #Max time(in seconds) for HTTP request to come through
-MAX_WAIT_TIME_Data = 3#Max Wait time(in seconds) for additional data from request(per chunk)
-MAX_SEND_TIME_DATA = 5#Max time(in seconds) for data to be sent out of the buffer
-BuffSize = 1024#Size of buffer for short transfers
-LargeBuffSize = 4096#Size of buffer for Files being served via service & HTTP request receival 
-SSL_CERT = "server.crt"#Name of ssl certificate(should be in Server_Files/SSL_Cert/)
-SSL_KEY = "server.key"#Name of ssl key(should be in Server_Files/SSL_Cert/)
+MAX_QUE_BACKLOG = 20 #Max number of people in the waiting que at any given point
+MAX_SERVE_TIME = 30#Max time for a single request to occur[If needing to serve large files/streaming increase this number]
+MAX_BUFFER_WAIT = 1#Time for buffer to clear(Send & Recv)[Increase if streaming video/audio]
+SSL_CERT = "server.crt"#Name of ssl certificate(should be in Server_Files/SSL_Cert/)[pem file]
+SSL_KEY = "server.key"#Name of ssl key(should be in Server_Files/SSL_Cert/)[pem file]
 #Play around with these to fine tune it to your machine & use case
-NumberOfServicesPerThread = 12#number of connections on one thread [should be around 8 - 15]
-ServiceThreadLimit = 18#Max number of threads to allow server to create(per instance i.e:- http & https) [should be near 15-50,as they run on one core]
-Min_Active_ServiceThreads = 1#Minimum active threads(I.E:-dont kill this service thread even if it has no work)[should be near 0-3]
+ServiceThreadLimit = 25#Max number of threads to allow server to create(per instance i.e:- http & https) [should be near 15-50,as they run on one core]
+Min_Active_ServiceThreads = 1#Minimum active threads(I.E:-dont kill this service thread even if it has no work)[should be near 1-3][Never make it 0]
 #Play around with these to fine tune it to your machine & use case
 #User Changeable
 
@@ -247,12 +246,10 @@ def Forbidden(Swear=0,Not_found=0,File_Name=''):
 #Forbidden
 
 #RESPOND
-def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,Keep_Alive,HTTPS):
+def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,Keep_Alive,HTTPS,timeS,timeO):
 	#Globals
 	global PHPEnabled
 	global PHP_CGI_PATH
-	global MAX_WAIT_TIME_Data
-	global MAX_SEND_TIME_DATA
 	global Working_Directory
 	global Port
 	global Ip
@@ -306,9 +303,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 				con.send(Forbidden(0,1,Content_Path+Content_Name))#404 Not Found
 				return 0#Kill connection
 		#Deal with Special documents(Only do so if not custom handled).
-
 		Cont_Size = str(len(Cont))#Set it to data size if not loading a file
-
 		#Get Content(Make sure no custom or special documents).
 		if (Cont == ""):
 			try:
@@ -351,7 +346,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 		if (File_Obj != None):
 			Entire_File_size = os.path.getsize(Content_Path+Content_Name)
 			Custom_Headers += "Content-Range:bytes "+str(File_Obj.tell())+"-"+str(Entire_File_size-1)+"/"+str(Entire_File_size)+"\n"#Add Content-Range:bytes to Headers
-			Custom_Headers +="Keep-Alive: timeout=5, max=100\n"#Tell the client if they do not accept data with it 5 secs it will cut the connection!
+			Custom_Headers +="Keep-Alive: timeout=0.5, max=100\n"#Tell the client if they do not accept data with it 5 secs it will cut the connection!
 			if (File_Obj.tell() != 0):
 				con.send(GF.Construct_Header(Custom_Headers,Keep_Alive,Mime,str(Cont_Size),"206 Partial Content"))
 			else:
@@ -362,13 +357,9 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 		#Send
 		if not(Request_Type == "HEAD"):
 			try:
-				con.settimeout(MAX_SEND_TIME_DATA)#time out on data send
-				#If file is greater than 10Kb return FileObj
-				if (Cont_Size > 10240)&(File_Obj != None):
-					return File_Obj,Cont_Size # this is for thread pooling stuffs
-				#If file is greater than 10Kb return FileObj
 				Cont_Count = 0#Count
 				while (Cont_Count < Cont_Size):
+					if ((time.time()-timeS)>timeO): raise Exception("Serve Timed Out")#@TimeOut
 					if (File_Obj == None):
 						con.send(Cont)
 						Cont_Count += len(Cont)
@@ -386,17 +377,13 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 			File_Obj.close()#Close File's Being Accessed!
 		#Close any file
 		#Terminate
-		return 0#Return Success!
+		return 0#Return
 		#Terminate
 	elif (Request_Type == "POST"):
 		#Globals Post only
 		global MAX_CONT_SIZE
 		global Server_file_path
 		#Globals Post ony
-
-		#Make sure server does not get stuck waiting for data
-		con.settimeout(MAX_WAIT_TIME_Data)
-		#Make sure server does not get stuck waiting for data
 
 		#Get post Data
 		#Place holders
@@ -447,6 +434,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 				while Boundry:
 					#Prevent Crash upon file failure
 					try:
+						if ((time.time()-timeS)>timeO): raise Exception("Serve Timed Out")#@TimeOut
 						POST_DATA += con.recv(BuffSize)#Get post until boundry is there!
 						Recieved +=BuffSize
 						#Make sure not null
@@ -498,6 +486,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 				while (Data_Recieved<Content_Len):
 					#Prevent Crash upon file failure
 					try:
+						if ((time.time()-timeS)>timeO): raise Exception("Serve Timed Out")#@TimeOut
 						POST_DATA += con.recv(BuffSize)#Get post!
 						#Make Sure not Null
 						if (POST_DATA[-1] == None):
@@ -578,20 +567,16 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 			return 0
 		#Kill upon failure
 
-		#Deal with response
-		con.settimeout(MAX_SEND_TIME_DATA)#time out on data send
+		#Deal with response $
 		if ((Cont == "")&(Cont_File_Path!="")):
 			#Special case where output is a file
 			Cont_Size = os.path.getsize(Cont_File_Path)#Get output size
 			con.send(GF.Construct_Header(Custom_Headers,Keep_Alive,Mime,str(Cont_Size)))#Send Header
 			Out_Obj = open(Cont_File_Path, "rb")
 			try:
-				#If file is greater than 10Kb return FileObj
-				if (Cont_Size > 10240):
-					return Out_Obj,Cont_Size # this is for thread pooling stuffs
-				#If file is greater than 10Kb return FileObj
 				Cont_Count = 0#Count
 				while (Cont_Count < Cont_Size):
+					if ((time.time()-timeS)>timeO): raise Exception("Serve Timed Out")#@TimeOut
 					con.send(Out_Obj.read(BuffSize))
 					Cont_Count+=BuffSize
 			except Exception, e:
@@ -615,23 +600,23 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 #RESPOND
 
 #Log Ip addresses and Analyse args
-def Analyse_Request(con,addr,HTTPS):
+def Analyse_Request(con,addr,HTTPS,timeS,timeO):
 	#Globals
 	global Logging
 	global Server_file_path
-	global MAX_WAIT_TIME_Request
 	global Working_Directory
 	global Default
 	global On
 	global ErrorLogging
+	global BuffSize
 	#Globals
 
 	#Recieve Request
 	Data = ""#Place Holder
-	con.settimeout(MAX_WAIT_TIME_Request)#Make sure not to waste resources waiting for connection for too long.
 	try:
 		while On:
-			tmp = con.recv(LargeBuffSize)
+			tmp = con.recv(BuffSize)
+			if ((time.time()-timeS)>timeO): return 3#@TimeOut
 			if not tmp: break#Stop if invalid data detected
 			Data += tmp
 			if ("\r\n\r\n" in Data):break#Stop if End of HTTP detected
@@ -716,7 +701,7 @@ def Analyse_Request(con,addr,HTTPS):
 			#Create Log Entry
 			DOS_Protect.Log_Out.append(Log_Entry)#Add to Logging que
 		#Log Stuff
-		return Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,Data,"close",HTTPS)#Send Response Connection-close/Keep-Alive
+		return Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,Data,"close",HTTPS,timeS,timeO)#Send Response Connection-close/Keep-Alive
 	except Exception, e:
 		#Log errors
 		if ErrorLogging:
@@ -728,93 +713,54 @@ def Analyse_Request(con,addr,HTTPS):
 
 
 #Manage Requests
-Active_Requests={}#List of active threads assigned to a threaded service.
+QuedRequests = []#Requests waiting to be handled
 Active_ServiceThreads = []#Number of active threads
-def Threaded_Service(My_ID,time_out):
+def Threaded_Service(My_ID,Serve_Time,Sock_TimeOut):
 	#Globals
 	global Min_Active_ServiceThreads
 	global TLock
 	global Active_ServiceThreads
-	global Active_Requests
+	global QuedRequests
 	global On
-	global LargeBuffSize
 	#Globals
-	time.sleep(0.025)#Wait for work(25ms)
 	Running = 1#Set loop to on
-	Remaining_Transfers = []#All the data left for transfer.
 	while Running:
 		#Make sure service dies with server
 		if (On == 0):
 			break
 		#Make sure service dies with server
-		#Send out data to buffer on requests
-		Addback = []
-		for i in range(len(Remaining_Transfers)):
-			transfer = Remaining_Transfers.pop()
-			try:
-				#DOS Check
-				if transfer[1] in DOS_Protect.Blocked_Candidates:
-					transfer[0].close()#Connection killed
-					continue#Quick next loop!
-				#DOS Check
-				transfer[0].send(transfer[2].read(LargeBuffSize))
-				transfer[3]+=LargeBuffSize
-				if (transfer[3] < transfer[4]):
-					Addback.append(transfer)
-				else:
-					transfer[2].close()#make sure to close file.
-					transfer[0].close()#make sure to close socket.
-					DOS_Protect.Remove_Address(transfer[1])
-			except Exception,excp:
-				#Log errors
-				if ErrorLogging:
-					DOS_Protect.ELog_Out.append(str(excp)+" :exception at 8\n\n")
-				#Log errors
-				transfer[2].close()#make sure to close file.
-				transfer[0].close()#make sure to close socket.
-		Remaining_Transfers = Addback
-		#Send out data to buffer on requests
 		try:
-			my_jobs = Active_Requests[My_ID]
-			if (my_jobs != []):
-				ready_to_read, ready_to_write, in_error = select.select([item[0] for item in my_jobs], [], [], 0.05)#check which sockets are readable (wait 50ms before moving on)
-				for my_job in my_jobs:
-					#DOS check
-					if my_job[1] in DOS_Protect.Blocked_Candidates:
-						Active_Requests[My_ID].remove(my_job)#Remove from active list
-						my_job[0].close()#Connection killed
-						continue#Quick next loop!
-					#DOS check
-					if (my_job[0] in ready_to_read):
-						File_Obj = Analyse_Request(my_job[0],my_job[1],my_job[2])#Run job
-						Active_Requests[My_ID].remove(my_job)#Remove from active list
-						#Move Job to Remaining transfers if there is data left to be sent
-						if File_Obj:
-							Remaining_Transfers.append([my_job[0],my_job[1],File_Obj[0],0,File_Obj[1]])#add to que
-						else:
-							DOS_Protect.Remove_Address(my_job[1])#Remove from concurrency list
-							my_job[0].close()#Connection completed
-						#Move Job to Remaining transfers if there is data left to be sent
-					else:
-						if ((time.time()-my_job[3])>time_out):
-							DOS_Protect.Remove_Address(my_job[1])#Remove from concurrency list
-							Active_Requests[My_ID].remove(my_job)#Remove from active list
-							my_job[0].close()#Connection time out
+			TLock.acquire()#Lock threading :#
+			if (QuedRequests):
+				my_job = QuedRequests.pop(0)#Grab item from que
+				TLock.release()#Release threading :O
+				#DOS check
+				if my_job[1] in DOS_Protect.Blocked_Candidates:
+					my_job[0].close()#Connection killed
+					continue#Quick next loop!
+				#DOS check
+				my_job[0].settimeout(MAX_BUFFER_WAIT)#Make sure not to waste resources waiting for data(Send&Recv).
+				Analyse_Request(my_job[0],my_job[1],my_job[2],time.time(),Serve_Time)
+				DOS_Protect.Remove_Address(my_job[1])#Remove from concurrency list
 			#check if i may kill my self
-			if ((Active_Requests[My_ID] == []) & (len(Active_ServiceThreads) > Min_Active_ServiceThreads) & (Remaining_Transfers==[])):
-				time.sleep(0.05)#wait make sure no new requests(50ms) are coming in
+			elif (len(Active_ServiceThreads) > Min_Active_ServiceThreads):
+				TLock.release()#Release threading :O
+				time.sleep(0.020)#wait make sure no new requests(20ms) are coming in
 				TLock.acquire()#Lock threading :#
-				if ((Active_Requests[My_ID] == []) & (len(Active_ServiceThreads) > Min_Active_ServiceThreads)):
-					del Active_Requests[My_ID]#Remove me
+				if ((len(Active_ServiceThreads) > Min_Active_ServiceThreads) & (not QuedRequests)):
 					Active_ServiceThreads.remove(My_ID)#DeActivate Me
 					TLock.release()#Release threading :O
 					Running = 0#Stop Service
 					break#Leave loop
 				TLock.release()#Release threading :O
-			elif ((Active_Requests[My_ID] == []) & (Remaining_Transfers==[])):
-				time.sleep(0.05)#IDLE for 50ms so as to not use up cpu
 			#check if i may kill my self
+			#Idle
+			else:
+				TLock.release()
+				time.sleep(0.05)#IDLE for 50ms so as to not use up cpu
+			#Idle
 		except Exception, e:
+			print str(e)
 			#Release locked up thread
 			if TLock.locked():
 				TLock.release()#Release threading :O
@@ -823,22 +769,18 @@ def Threaded_Service(My_ID,time_out):
 			if ErrorLogging:
 				DOS_Protect.ELog_Out.append(str(e)+" :exception at 9\n\n")
 			#Log errors
-			#Running = 0#Kill service
-	#print "trying to kill my self here: "+My_ID
-	#print str(len(Active_ServiceThreads)) + ' threads are active'
-	#print str(len([grandchild for parent in Active_Requests.values() for child in parent for grandchild in child])/4)+ " Requests being processed" 
 	return 0#Finished Service
 #Manage Requests
 
 #Create Service Threads
 def Create_Service_Thread():
-	global MAX_WAIT_TIME_Request
+	global MAX_SERVE_TIME
+	global MAX_BUFFER_WAIT
 	global Active_ServiceThreads
 	ID = str(uuid.uuid4())[:6]
 	if not(ID in Active_ServiceThreads):
 		Active_ServiceThreads.append(ID)
-		Active_Requests[ID] = []
-		Thread(target=Threaded_Service, args=(ID,MAX_WAIT_TIME_Request)).start()
+		Thread(target=Threaded_Service, args=(ID,MAX_SERVE_TIME,MAX_BUFFER_WAIT)).start()
 		return ID
 	else:
 		return Create_Service_Thread()
@@ -852,10 +794,10 @@ try:
 		#Service Threads
 		global ServiceThreadLimit
 		global Min_Active_ServiceThreads
-		global NumberOfServicesPerThread
-		global Active_Requests
+		global QuedRequests
 		global Active_ServiceThreads
-		global TLock
+		global MAX_QUE_BACKLOG
+		global SNTBLN
 		#Service Threads
 		#Logging
 		global ErrorLogging
@@ -872,6 +814,7 @@ try:
 		#Base
 		Sock = socket.socket()#Define Sock.
 		try:
+			Sock.settimeout(None)#Just a precaution
 			if HTTPS:
 				#Change LOG file names
 				DOS_Protect.ErrorLogFile+="S"
@@ -935,26 +878,19 @@ try:
 				#If Https
 
 				#Accept Connection
-				Accepted = 0
-				TLock.acquire()#Lock threading :#
-				for Active_Service in Active_ServiceThreads:
-					if (len(Active_Requests[Active_Service]) < NumberOfServicesPerThread):
-						Active_Requests[Active_Service].append([connection,address[0],HTTPS,time.time()])
-						Accepted = 1
-						#Add to Candidate list for dos
-						DOS_Protect.Add_Address(address[0])
-						#Add to Candidate list for dos
-						break#Stop for loop
-				TLock.release()#Release threading :O
-				if ((len(Active_ServiceThreads) < ServiceThreadLimit)&(Accepted == 0)):
-					ID = Create_Service_Thread()
-					Active_Requests[ID].append([connection,address[0],HTTPS,time.time()])
+				if (len(QuedRequests) < MAX_QUE_BACKLOG):
+					QuedRequests.append([connection,address[0],HTTPS])
 					#Add to Candidate list for dos
 					DOS_Protect.Add_Address(address[0])
 					#Add to Candidate list for dos
-				elif(Accepted==0):
+				else:
 					connection.close()#No space
 				#Accept Connection
+
+				#Check if Server Needs New Service Thread
+				if ((len(QuedRequests) > SNTBLN)&(len(Active_ServiceThreads)<ServiceThreadLimit)):
+					Create_Service_Thread()
+				#Check if Server Needs New Service Thread
 			except Exception, err:
 				#Log errors
 				if ErrorLogging:
@@ -982,7 +918,7 @@ try:
 		Serv_HTTP(1,SSL_Context)
 		#HTTPS
 	#Start Serving
-except:
+except :
 	DOS_Protect.On = 0#Shutdown DOS protection
 	On = 0#Shutdown any Loops on core server
 	#SSL
