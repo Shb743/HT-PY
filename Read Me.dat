@@ -5,13 +5,6 @@ HTTP
 My implementation of HTTP is quite basic and a lot functionality is missing(I.E:- Caching,Compression,etc).
 
 
-PHP
----
-I am sorry if any PHP functionality is missing;There is next to no documentation(that I could find) on PHP and server integration.
-(I know the way I implemented php is crappy but I couldnt think of a better way that wouldnt become a whole other project on its own).
-
-There is an known memory overflow in my current implementation of php;when you try to load a php from within a php file using "file('http://server:port/somephpfile.php');" the php gives an out of memory exception,tbh i have no idea why....(If you figure this one out pls let me know! any help is greatly appreciated).
-
 SSL/HTTPS
 ---------
 The server is designed to use the best available SSL suite(this is default option with the ssl library),but the security may vary greatly with local OpenSSL installation,to improve security I recomend updating SSL regularly and recompiling python with new ssl support. 
@@ -24,44 +17,62 @@ MIME:
 -----
 To add further mime types edit the mime.typ.shb file, using a text editor, in the Server_Files directory
 
+Inline Python code:
+-------------------
+In an html file The <Py>\n tag(not case sensitive) will begin the inline python.
+all that is in between <py>\n</py> will be treated as python and will be executed by the server.
+Base indentation will be taken as the indentation of the first code line after the <py>\n tag.
 
-File Handling(PHP):
-------------------
-I could not figure out how to send file objects over to the $_FILES variable in PHP.
-Thus I made a short cut,I placed the name of the Temporary file in the POST_FILE_PATH variable.
-In PHP this Variable can be accessed by using "$_SERVER['POST_FILE_PATH']".
-If the file was a file upload to the server an addition variable,POST_FILE_NAME, will be set.
-This variable can be accessed by "$_SERVER['POST_FILE_NAME']" it will contain the name of the file being sent.
+The following variables are predefined and accessable by all inline python code:
+1.ResponseCode:-This is usually 200 OK but can be set to other values
+2.Output_Content:-Adding data here will modify the output of the html page at the point of the <py> tag
+3.Custom_Headers:-Adding data here in the form Header:Value\n will add aditional headers on to the output
+4.Requested_Content_Name:- File requested by browser.
+5.Requested_Content_Path:-File path to requested file on system
+6.Url_parameters:-Url parameters
+7.Mime:-Mime type of output
+8.RAW_DATA:-Raw request headers
+9.HTTPS:-Is it HTTPS
+10.POST:-Post data(file descriptor/data variable)
+11.POSTFILEHANDLING:-Is post a file-descriptor
+12.POSTFILENAME:- If the post was a file upload whats the uploaded files name.
+
+ADDITIONALLY all functions and imports defined on Custom.py are available to inline python code.
 
 
-File Upload example using the servers system on PHP:
----------------------------------------------------------
-<?php
-$uploadfile = $_SERVER['POST_FILE_PATH'];
-$givenfilename = $_SERVER['POST_FILE_NAME'];
-if ($givenfilename == ""){$givenfilename = "temp.tmp";}
-echo '<pre>';
-if ($uploadfile != ""){
-if (copy($uploadfile, $givenfilename)) {
-    echo "File is valid, and was successfully uploaded.\n";
-} else {
-    echo "ERROR!\n";
-}
-}else{
-	echo "Not a file upload.\n";
-}
+File Handling(Python):
+---------------------
+If post data is larger than 100Kb it will be stored on server using a temprorary file.
+If this is the case POST will be a file descriptor to the temproray file set to "wb+" mode(hence read & write binary mode)
 
-echo 'Here is some more debugging info:';
-echo($uploadfile);
 
-echo '</pre>';
-?>
+BASIC File Upload example using the servers system on Python:
+-------------------------------------------------------------
+<html>
+	<Py>
+		#Just print out some data
+		print str(POST)
+		print POSTFILEHANDLING
+		print POSTFILENAME
+		#Just print out some data
+		if (POST != None):#If Post has data(will be file descriptor or string)
+			if (POSTFILENAME != ""):#If the upload is a file upload(this will be empty if not)
+				FileOut = open(POSTFILENAME,"wb")#Open File with file name given by browser at root(working directory)
+				if (POSTFILEHANDLING):#If post was stored on server as temprorary file then POST = file descriptor if not POST is var with the data
+					POST.seek(0)#Set file descriptor start to 0(good practice)
+					FileOut.write(POST.read())#If file descriptor
+					Output_Content += "<p>Fileuploaded: 0-"+POSTFILENAME+" </p>"
+				else:
+					FileOut.write(POST)#If Data variable
+					Output_Content += "<p>Fileuploaded: 1-"+POSTFILENAME+" </p>"
+				FileOut.close()
+	</Py>
+</html>
 ---------------------------------------------------------
 
 
 My Sources:
 -----------
-The main source of my knowledge on PHP was from this website: http://graphcomp.com/info/specs/cgi11.html
 The main source of my knowledge on HTTP was from this website: http://www.w3.org/Protocols/rfc2616/rfc2616.html
 
 ------------------------------------------------------------------------------------------------------------------------------------

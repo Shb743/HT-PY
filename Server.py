@@ -12,8 +12,7 @@ import json#Decoding Settings File :O
 import uuid#Generating Temporary file names & Service Thread ID's ~
 import GF#Global Functions
 import Custom#Custom Handling of requests
-import DOS_Protect#My protection Script !(Takes care of logging as well)
-import select#Check if socket is ready :3
+import HouseKeeping#My HouseKeeping Script !(Takes care of logging & DOS protection)
 import time#Time out,sleeping etc...
 #Imports*
 
@@ -29,7 +28,7 @@ White_List = None#Place Holder.
 Black_List = None#Place Holder.
 SSL_Context = None#Place Holder.
 SHB_Mime = []# SHB MIME !
-Default = ["index.html","index.php"] #Default file to load.
+Default = ["index.html","main.html"] #Default file to load.
 Settings_file = "Settings.dat"#Load Settings.
 Allowed_Directories_File = "Allowed_Dirs.dat"#Load Allowed Directories Dat.
 Socket_Backlog = 5#MAX number of clients waiting to be accepted(in socket que).
@@ -42,11 +41,10 @@ Ip=""#IP(if left blank will bind to all available interfaces)
 Port = 80#Port
 HTTPEnabled = 1#HTTP on/off
 SSLPort = 443#Port for HTTPS
-SSLEnabled = 0#HTTPS on/off
-PHPEnabled = 0#PHP on/off
+SSLEnabled = 1#HTTPS on/off
 Logging = 1#Should The Server Log stuff?
 ErrorLogging = 1#Should Server Log Exceptions(only ones that occur after Server is up).
-Working_Directory = "%/root/"# % = execution directory(i.e:- where server root is set,Custom.py & PHP will be executed,and where allowed directories * will be set)
+Working_Directory = "%/root/"# % = execution directory(i.e:- where server root is set,Custom.py will be executed,and where allowed directories * will be set)
 MAX_CONT_SIZE = 52428800 #50MB, Max size of post data
 MAX_QUE_BACKLOG = 20 #Max number of people in the waiting que at any given point
 MAX_SERVE_TIME = 30#Max time for a single request to occur[If needing to serve large files/streaming increase this number]
@@ -62,14 +60,6 @@ Min_Active_ServiceThreads = 1#Minimum active threads(I.E:-dont kill this service
 #GLOBALS
 
 #CHECKS
-#Check if PHP enabled & init
-if (PHPEnabled):
-	import PHPI#PHP MODULE
-	if (PHPI.Error):
-		print(PHPI.EMSG)#check for errors
-else:
-	print "PHP initizialed..."
-#Check if PHP enabled & init
 
 #Check if SSL enabled & init
 if SSLEnabled:
@@ -80,7 +70,7 @@ if SSLEnabled:
 	except  Exception, e:
 		print e#Print out Error
 		print "SSL failed to be initizialed...."
-		DOS_Protect.On = 0#Shutdown DOS protection
+		HouseKeeping.On = 0#Shutdown HouseKeeping
 		On = 0;#Shutdown server
 		sys.exit("Dead")#State Death
 #Check if SSL enabled & init
@@ -159,7 +149,7 @@ def Settings():
 				except Exception, e:
 					print e#Print out Error
 					print "SSL failed to load cipher string..."
-					DOS_Protect.On = 0#Shutdown DOS protection
+					HouseKeeping.On = 0#Shutdown HouseKeeping
 					On = 0;#Shutdown server
 					sys.exit("Dead")#State Death
 #Settings
@@ -246,10 +236,8 @@ def Forbidden(Swear=0,Not_found=0,File_Name=''):
 #Forbidden
 
 #RESPOND
-def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,Keep_Alive,HTTPS,timeS,timeO):
+def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,Payload,Keep_Alive,HTTPS,timeS,timeO):
 	#Globals
-	global PHPEnabled
-	global PHP_CGI_PATH
 	global Working_Directory
 	global Port
 	global Ip
@@ -259,6 +247,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 	#Vars
 	Cont="" #Define Response Content
 	Custom_Headers = ""#Place Holder
+	ResponseCode = "200 OK"#Response Default
 	#Vars
 
 	#Security Check
@@ -270,9 +259,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 	#MIME
 	Mime = Check_Mime(Content_Name)
 	if (Mime == None):
-		Mime = "text/plain"
-		if "html" in Content_Name:
-			Mime = "text/html"
+		Mime = "text/plain"#When in doubt its plain text
 	#MIME
 
 	#Handle Requests
@@ -281,7 +268,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 		File_Obj = None#Place Holder
 
 		#Check for Custom Handling
-		Cont,Mime,Custom_Headers,Cont_File_Path = Custom.GET(Content_Name,Content_Path,Url_parameters,Mime,RAW_DATA,HTTPS)#Check for Custom input
+		Cont,Mime,Custom_Headers,Cont_File_Path,ResponseCode = Custom.GET(Content_Name,Content_Path,Url_parameters,Mime,RAW_DATA,HTTPS)#Check for Custom input
 		#Kill upon failure
 		if (Cont == 0):
 			return 0
@@ -296,8 +283,8 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 		#Deal with Special documents(Only do so if not custom handled).
 		if ((Cont == "")&(Cont_File_Path == "")):
 			if (os.path.isfile(Content_Path+Content_Name)):
-				if ((Content_Name[-4:] == ".php")&PHPEnabled):
-					tmp_headers,Cont = PHPI.GET_PHP(Content_Name,Content_Path,RAW_DATA,Url_parameters,Port,Ip,Working_Directory,HTTPS)
+				if (Content_Name[-5:] == ".html"):
+					Cont,Mime,tmp_headers,ResponseCode = Custom.Parse(Content_Name,Content_Path,Url_parameters,Mime,RAW_DATA,HTTPS)
 					Custom_Headers+=tmp_headers
 			else:
 				con.send(Forbidden(0,1,Content_Path+Content_Name))#404 Not Found
@@ -336,7 +323,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 			except Exception, e:
 				#Log errors
 				if ErrorLogging:
-					DOS_Protect.ELog_Out.append(str(e)+" :exception at 1\n\n")
+					HouseKeeping.ELog_Out.append(str(e)+" :exception at 1\n\n")
 				#Log errors
 				File_Obj.close()
 				con.send(Forbidden(0,1,Content_Path+Content_Name))#404 Not Found
@@ -350,9 +337,9 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 			if (File_Obj.tell() != 0):
 				con.send(GF.Construct_Header(Custom_Headers,Keep_Alive,Mime,str(Cont_Size),"206 Partial Content"))
 			else:
-				con.send(GF.Construct_Header(Custom_Headers,Keep_Alive,Mime,str(Cont_Size)))
+				con.send(GF.Construct_Header(Custom_Headers,Keep_Alive,Mime,str(Cont_Size),ResponseCode))
 		else:
-			con.send(GF.Construct_Header(Custom_Headers,Keep_Alive,Mime,str(Cont_Size)))
+			con.send(GF.Construct_Header(Custom_Headers,Keep_Alive,Mime,str(Cont_Size),ResponseCode))
 		#Create Response*
 		#Send
 		if not(Request_Type == "HEAD"):
@@ -369,7 +356,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 			except Exception,i:
 				#Log errors
 				if ErrorLogging:
-					DOS_Protect.ELog_Out.append(str(i)+" :exception at 2\n\n")
+					HouseKeeping.ELog_Out.append(str(i)+" :exception at 2\n\n")
 				#Log errors
 		#Send
 		#Close any file
@@ -385,35 +372,58 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 		global Server_file_path
 		#Globals Post ony
 
-		#Get post Data
 		#Place holders
 		POST_DATA = ""#Place holder
 		POST_File_Name = ""#Place holder
-		POST_File_Handling = 0#Var
-		Incomplete_Post = 0#Var
+		POST_File_Handling = 0#Place holder
+		Incomplete_Post = 0#Place holder
+		Content_Len = 1024#Place holder
+		File_Boundry = None#Place holder
+		File_Obj = None#Place holder
+		NeedToRecv = 0#PlaceHolder
 		#Place holders
+		#Get content Length & File Boundry
+		#Check for data in headers
+		for POST_Header in RAW_DATA:
+			if ("Content-Length".lower() in POST_Header.lower()):
+				Content_Len = int(POST_Header.split(":")[1])
+			#Get File Boundry
+			if ("boundary=" in POST_Header):
+				File_Boundry = (POST_Header.split("=")[1])
+				if ("\r" in File_Boundry):
+					File_Boundry = File_Boundry.split("\r")[0]
+			#Get File Boundry
+		#Check for data in headers
+		#Get content Length & File Boundry
 		#Check if post data is latched on to Header
-		if not(len(RAW_DATA[-1]) < 3):
-			POST_DATA = RAW_DATA[-1]#Get POST DATA
-			#print RAW_DATA
-			#print POST_DATA
+		if (Payload != None):
+			#Check for data in post specific headers
+			for POST_Header in Payload.split('\n'):
+				#Get File Name
+				if ("Content-Disposition:" in POST_Header):
+					POST_File_Name = (POST_Header.split('="')[-1])[:-2]
+				#Get File Name
+			#Check for data in post specific headers
+			#Sort out payload (File post etc)
+			if (POST_File_Name !=  ""):
+				#Remove Post Headers
+				POST_DATA = Payload.split("\r\n\r\n")[2]
+				#Remove Post Headers
+			else:
+				#No Post Headers
+				POST_DATA = Payload
+				#No Post Headers
+			#Sort out payload (File post etc)
+			if (len(Payload)<Content_Len):
+				NeedToRecv = 1
+			elif (File_Boundry != None):
+				#Remove Footer
+				POST_DATA = POST_DATA.replace(("--"+File_Boundry+"--"),"")#Remove footer if whole file
+				#Remove Footer
 		else:
-			File_Boundry = None#Place holder
-			File_Obj = None#Place holder
-
-			#Get content Length
-			Content_Len = 1024
-			for POST_Header in RAW_DATA:
-				if ("Content-Length".lower() in POST_Header.lower()):
-					Content_Len = int(POST_Header.split(":")[1])
-				#Get File Boundry
-				if ("boundary=" in POST_Header):
-					File_Boundry = (POST_Header.split("=")[1])
-					if ("\r" in File_Boundry):
-						File_Boundry = File_Boundry.split("\r")[0]
-				#Get File Boundry
-			#Get content Length
-
+			NeedToRecv = 1
+		#Get post Data
+		if NeedToRecv:
 			#Check Perform Content Length Checks
 			#Max Size Check
 			if (Content_Len > MAX_CONT_SIZE):
@@ -423,14 +433,14 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 			#File handling for large files(>100KB) Check
 			if (Content_Len > 102400):
 				POST_File_Handling = 1
-				File_Obj = open(Server_file_path+"Temp/"+(str(uuid.uuid4()).replace("-",""))+".tmp","w+")
+				File_Obj = open(Server_file_path+"Temp/"+(str(uuid.uuid4()).replace("-",""))+".tmp","wb+")
 			#File handling for large files Check
 			#Check Perform Content Length Checks
 			#Get content
 			#If Boundry Present Get data till boundry
 			if (File_Boundry != None):
 				Boundry = 1
-				Recieved = 0
+				Recieved = len(POST_DATA)
 				while Boundry:
 					#Prevent Crash upon file failure
 					try:
@@ -439,12 +449,12 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 						Recieved +=BuffSize
 						#Make sure not null
 						if (POST_DATA[-1] == None):
-							raise Exception
+							raise Exception("Recieved Null on post")
 						#Make sure not null
 					except Exception, e:
 						#Log errors
 						if ErrorLogging:
-							DOS_Protect.ELog_Out.append(str(e)+" :exception at 3\n\n")
+							HouseKeeping.ELog_Out.append(str(e)+" :exception at 3\n\n")
 						#Log errors
 						Incomplete_Post = 1#Stop processing request
 						break#Leave loop file not Recieved
@@ -470,7 +480,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 					if (File_Boundry in POST_DATA[-(len(File_Boundry)+10):]):
 						Boundry = 0
 						#Remove Footer
-						POST_DATA = POST_DATA[:-(len(POST_DATA.split("\n")[-2])+1)]
+						POST_DATA = POST_DATA.replace(("--"+File_Boundry+"--"),"")#Remove footer if whole file
 						#Remove Footer
 					#Check for Boundry
 
@@ -495,7 +505,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 					except Exception, e:
 						#Log errors
 						if ErrorLogging:
-							DOS_Protect.ELog_Out.append(str(e)+" :exception at 4\n\n")
+							HouseKeeping.ELog_Out.append(str(e)+" :exception at 4\n\n")
 						#Log errors
 						Incomplete_Post = 1#Stop processing request
 						break#Leave loop file not Recieved
@@ -514,6 +524,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 			#Set POST_DATA to File Object!
 			#Get content
 		#Get post Data
+
 		#Check for Incomplete_Post
 		if Incomplete_Post:
 			#Delete file if it is a file
@@ -525,26 +536,15 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 			return 0#Stop Response
 		#Check for Incomplete_Post
 
-		#Print out details
-		#print POST_File_Name
-		#if not(POST_File_Handling):
-		#print POST_DATA
-		#	print "Recieved Post:"+str(len(POST_DATA))#Remove Later
-		#else:
-		#	POST_DATA.seek(0, os.SEEK_END)
-		#	print "Recieved Post:"+str(POST_DATA.tell())#Remove Later
-		#	POST_DATA.seek(0)
-		#Print out details
-
 		#Check for Custom Handling
-		Cont,Mime,Custom_Headers,Cont_File_Path = Custom.POST(Content_Name,Content_Path,Url_parameters,Mime,POST_DATA,RAW_DATA,POST_File_Name,HTTPS)#Check for Custom input
+		Cont,Mime,Custom_Headers,Cont_File_Path,ResponseCode = Custom.POST(Content_Name,Content_Path,Url_parameters,Mime,POST_DATA,RAW_DATA,POST_File_Name,HTTPS)#Check for Custom input
 		#Check for Custom Handling*
 
 		#Deal with Special documents(Only do so if not custom handled).
 		if ((Cont == "")&(Cont_File_Path == "")):
 			if (os.path.isfile(Content_Path+Content_Name)):
-				if ((Content_Name[-4:] == ".php")&PHPEnabled):
-					tmp_headers,Cont=PHPI.POST_PHP(RAW_DATA,Url_parameters,Content_Name,Port,Ip,Content_Path,Working_Directory,POST_File_Handling,POST_DATA,POST_File_Name,HTTPS)
+				if (Content_Name[-5:] == ".html"):
+					Cont,Mime,tmp_headers,ResponseCode = Custom.Parse(Content_Name,Content_Path,Url_parameters,Mime,RAW_DATA,HTTPS,POST_DATA,POST_File_Handling,POST_File_Name)
 					Custom_Headers+=tmp_headers
 			else:
 				con.send(Forbidden(0,1,Content_Path+Content_Name))#404 Not Found
@@ -559,7 +559,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 				POST_DATA.close()#Close the File
 				os.remove(Name)#Delete file from disk
 		except:
-			pass#File may have been deleted by Custom function or PHP
+			pass#File may have been deleted by Custom function
 		#Close POST_DATA and delete file if it is one
 
 		#Kill upon failure
@@ -571,7 +571,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 		if ((Cont == "")&(Cont_File_Path!="")):
 			#Special case where output is a file
 			Cont_Size = os.path.getsize(Cont_File_Path)#Get output size
-			con.send(GF.Construct_Header(Custom_Headers,Keep_Alive,Mime,str(Cont_Size)))#Send Header
+			con.send(GF.Construct_Header(Custom_Headers,Keep_Alive,Mime,str(Cont_Size),ResponseCode))#Send Header
 			Out_Obj = open(Cont_File_Path, "rb")
 			try:
 				Cont_Count = 0#Count
@@ -582,13 +582,13 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,K
 			except Exception, e:
 				#Log errors
 				if ErrorLogging:
-					DOS_Protect.ELog_Out.append(str(e)+" :exception at 5\n\n")
+					HouseKeeping.ELog_Out.append(str(e)+" :exception at 5\n\n")
 				#Log errors
 			Out_Obj.close()#Close output object
 			#Special case where output is a file
 		else:
 			#Create & Send Response
-			con.send(GF.Construct_Header(Custom_Headers,Keep_Alive,Mime,str(len(Cont)))+Cont)#Send Response
+			con.send(GF.Construct_Header(Custom_Headers,Keep_Alive,Mime,str(len(Cont)),ResponseCode)+Cont)#Send Response
 			#Create & Send Response*
 		#Deal with response
 
@@ -613,6 +613,7 @@ def Analyse_Request(con,addr,HTTPS,timeS,timeO):
 
 	#Recieve Request
 	Data = ""#Place Holder
+	Payload = ""#Place Holder
 	try:
 		while On:
 			tmp = con.recv(BuffSize)
@@ -623,10 +624,16 @@ def Analyse_Request(con,addr,HTTPS,timeS,timeO):
 	except Exception, e:
 		#Log errors
 		if ErrorLogging:
-			DOS_Protect.ELog_Out.append(str(e)+" :exception at 6\n\n")
+			HouseKeeping.ELog_Out.append(str(e)+" :exception at 6\n\n")
 		#Log errors
 		return 0#Stop Response
-	Data = Data.split("\n")#Get Data
+	#Get Data and remove payload that came with data
+	Data = Data.split("\r\n\r\n")
+	for i in range(len(Data)):
+		if (i != 0):
+			Payload += Data[i]+"\r\n\r\n"
+	Data = Data[0].split('\n')#Get Data
+	#Get Data and remove payload that came with data
 	#Chrome sends blank request fro some reason
 	if (Data == ['']):
 		return 0
@@ -699,13 +706,13 @@ def Analyse_Request(con,addr,HTTPS,timeS,timeO):
 			Log_Entry+= "Date:"+datetime.datetime.now().strftime('%D')+"	|"
 			Log_Entry+="Time:"+datetime.datetime.now().strftime('%H:%M')+"\n\n"
 			#Create Log Entry
-			DOS_Protect.Log_Out.append(Log_Entry)#Add to Logging que
+			HouseKeeping.Log_Out.append(Log_Entry)#Add to Logging que
 		#Log Stuff
-		return Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,Data,"close",HTTPS,timeS,timeO)#Send Response Connection-close/Keep-Alive
+		return Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,Data,Payload,"close",HTTPS,timeS,timeO)#Send Response Connection-close/Keep-Alive
 	except Exception, e:
 		#Log errors
 		if ErrorLogging:
-			DOS_Protect.ELog_Out.append(str(e)+" :exception at 7\n\n")
+			HouseKeeping.ELog_Out.append(str(e)+" :exception at 7\n\n")
 		#Log errors
 	#Process Data
 	return 0#Failure ?
@@ -735,13 +742,13 @@ def Threaded_Service(My_ID,Serve_Time,Sock_TimeOut):
 				my_job = QuedRequests.pop(0)#Grab item from que
 				TLock.release()#Release threading :O
 				#DOS check
-				if my_job[1] in DOS_Protect.Blocked_Candidates:
+				if my_job[1] in HouseKeeping.Blocked_Candidates:
 					my_job[0].close()#Connection killed
 					continue#Quick next loop!
 				#DOS check
 				my_job[0].settimeout(MAX_BUFFER_WAIT)#Make sure not to waste resources waiting for data(Send&Recv).
 				Analyse_Request(my_job[0],my_job[1],my_job[2],time.time(),Serve_Time)
-				DOS_Protect.Remove_Address(my_job[1])#Remove from concurrency list
+				HouseKeeping.Remove_Address(my_job[1])#Remove from concurrency list
 			#check if i may kill my self
 			elif (len(Active_ServiceThreads) > Min_Active_ServiceThreads):
 				TLock.release()#Release threading :O
@@ -767,7 +774,7 @@ def Threaded_Service(My_ID,Serve_Time,Sock_TimeOut):
 			#Release locked up thread
 			#Log errors
 			if ErrorLogging:
-				DOS_Protect.ELog_Out.append(str(e)+" :exception at 9\n\n")
+				HouseKeeping.ELog_Out.append(str(e)+" :exception at 9\n\n")
 			#Log errors
 	return 0#Finished Service
 #Manage Requests
@@ -817,9 +824,9 @@ try:
 			Sock.settimeout(None)#Just a precaution
 			if HTTPS:
 				#Change LOG file names
-				DOS_Protect.ErrorLogFile+="S"
-				DOS_Protect.LogFile+="S"
-				DOS_Protect.DOSFile+="S"
+				HouseKeeping.ErrorLogFile+="S"
+				HouseKeeping.LogFile+="S"
+				HouseKeeping.DOSFile+="S"
 				#Change LOG file names
 				#Configure socket
 				Sock.bind((Ip,SSLPort))#Bind to SSL port
@@ -835,10 +842,10 @@ try:
 		except Exception, err:
 			print err
 			On = 0#Shutdown any Loops on HTTPS server
-			DOS_Protect.On = 0#Shutdown DOS protection
+			HouseKeeping.On = 0#Shutdown HouseKeeping
 			sys.exit("Dead")#State Death
 		#Base
-		DOS_Protect.Init()#Begin DOS protection service
+		HouseKeeping.Init()#Begin HouseKeeping service
 		#Create Min Services
 		for i in range(Min_Active_ServiceThreads):
 			Create_Service_Thread()
@@ -851,7 +858,7 @@ try:
 				connection, address = Sock.accept() # connection is a new socket
 
 				#Check DOS List
-				if (address[0] in DOS_Protect.Blocked_Candidates):
+				if (address[0] in HouseKeeping.Blocked_Candidates):
 					connection.close()#Do not waste any more resources on the DOSer
 					continue#skip to the next connection.
 				#Check DOS List
@@ -881,7 +888,7 @@ try:
 				if (len(QuedRequests) < MAX_QUE_BACKLOG):
 					QuedRequests.append([connection,address[0],HTTPS])
 					#Add to Candidate list for dos
-					DOS_Protect.Add_Address(address[0])
+					HouseKeeping.Add_Address(address[0])
 					#Add to Candidate list for dos
 				else:
 					connection.close()#No space
@@ -894,7 +901,7 @@ try:
 			except Exception, err:
 				#Log errors
 				if ErrorLogging:
-					DOS_Protect.ELog_Out.append(str(err)+" :exception at 10\n\n")
+					HouseKeeping.ELog_Out.append(str(err)+" :exception at 10\n\n")
 				#Log errors
 				continue#skip to the next connection.
 		Sock.close()#Kill the socket
@@ -919,7 +926,7 @@ try:
 		#HTTPS
 	#Start Serving
 except :
-	DOS_Protect.On = 0#Shutdown DOS protection
+	HouseKeeping.On = 0#Shutdown HouseKeeping
 	On = 0#Shutdown any Loops on core server
 	#SSL
 	if HTTPSProc:
@@ -932,7 +939,7 @@ except :
 	sys.exit("Dead")#State Death
 #MAIN
 #Shut Down(Ensurance)
-DOS_Protect.On = 0#Shutdown DOS protection
+HouseKeeping.On = 0#Shutdown HouseKeeping
 On = 0#Shutdown any Loops on core server
 #SSL
 if HTTPSProc:
