@@ -1,8 +1,10 @@
 SUDO SHB do list...
 ----------------
-FIX SSL SOCKET DEATH
-Re-Read entire code base
 
-Put up links to downloadable copies of code on my website :#
+FIX SSL SOCKET DEATH[/]
 
-MAKE SERVER more resistant TO DOS ATTACKS
+Make SocketBackLogTime(replace socket backlog number to spawn thread with a time i.e 100ms if a request is in que for 100ms spawn new thread to help handle the load)
+
+Check if data needs to be sanitized (eg:- quote all data to make sure no data is executed.)
+
+Re-Read entire code base[]

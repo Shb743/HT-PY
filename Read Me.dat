@@ -36,9 +36,8 @@ The following variables are predefined and accessable by all inline python code:
 10.POST:-Post data(file descriptor/data variable)
 11.POSTFILEHANDLING:-Is post a file-descriptor
 12.POSTFILENAME:- If the post was a file upload whats the uploaded files name.
-
+**NOTE:-  The variables available are not able to be modified within functions inside inline py as these functions would be nestled.
 ADDITIONALLY all functions and imports defined on Custom.py are available to inline python code.
-
 
 File Handling(Python):
 ---------------------

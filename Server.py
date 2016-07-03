@@ -41,7 +41,7 @@ Ip=""#IP(if left blank will bind to all available interfaces)
 Port = 80#Port
 HTTPEnabled = 1#HTTP on/off
 SSLPort = 443#Port for HTTPS
-SSLEnabled = 1#HTTPS on/off
+SSLEnabled = 0#HTTPS on/off
 Logging = 1#Should The Server Log stuff?
 ErrorLogging = 1#Should Server Log Exceptions(only ones that occur after Server is up).
 Working_Directory = "%/root/"# % = execution directory(i.e:- where server root is set,Custom.py will be executed,and where allowed directories * will be set)
