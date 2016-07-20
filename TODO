@@ -5,6 +5,12 @@ FIX SSL SOCKET DEATH[/]
 
 Make SocketBackLogTime(replace socket backlog number to spawn thread with a time i.e 100ms if a request is in que for 100ms spawn new thread to help handle the load)
 
-Check if data needs to be sanitized (eg:- quote all data to make sure no data is executed.)
+Re-check if data sanitation (eg:- quote all data to make sure no data is executed.)[i dont think this is an issue but better safe than sorry]
+
+Add in Cache-Headers[that can be enabled using settings file] 
+
+Add in Gzip Compression[that can be enabled using settings file]
+
+Optimized code for speed []
 
 Re-Read entire code base[]
