@@ -13,5 +13,11 @@ For HTTPS support Open-SSL is required.
 
 *Note: I have not tested the server on windows.
 
+
+#How to run the server
+The server should be given sufficient permissions if it is to bind to reserved ports i.e:80
+
+Server can be started like so "python Server.py".
+
 #Author:Shoaib Omar
 example of website running on HT&PY: http://shoaib.zzzz.io | https://shoaib.zzzz.io *Website is running but not finished.
