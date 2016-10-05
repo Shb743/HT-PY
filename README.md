@@ -20,4 +20,4 @@ The server should be given sufficient permissions if it is to bind to reserved p
 Server can be started like so "python Server.py".
 
 #Author:Shoaib Omar
-example of website running on HT&PY: http://shoaibomar.com | https://shoaibomar.com *Website is running but not finished.
+example of website running on HT&PY: http://shoaibomar.com | https://shoaibomar.com
