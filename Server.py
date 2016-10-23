@@ -610,7 +610,6 @@ def Analyse_Request(con,addr,HTTPS,timeS,timeO):
 	global ErrorLogging
 	global BuffSize
 	#Globals
-
 	#Recieve Request
 	Data = ""#Place Holder
 	Payload = ""#Place Holder
@@ -650,7 +649,7 @@ def Analyse_Request(con,addr,HTTPS,timeS,timeO):
 		#Take main Header info
 		if (len(Main_header)> 1):
 			Request_Type = Main_header[0]
-			File_Name = Main_header[1][1:]
+			File_Name = urllib.unquote(Main_header[1][1:]).decode('utf8')#Normalize string
 		#Take main Header info
 
 		#Url Handling
@@ -674,10 +673,6 @@ def Analyse_Request(con,addr,HTTPS,timeS,timeO):
 		if (Content_Path[-1]!="/"):
 			Content_Path+="/"
 		#Make Sure / at end of content path
-		#Normalize
-		Content_Name = urllib.unquote(Content_Name).decode('utf8')#Normalize string
-		Content_Path = urllib.unquote(Content_Path).decode('utf8')#Normalize string
-		#Normalize
 		#If no file is requested set Default
 		if (Content_Name == "" or Content_Name[-1] == "/"):
 			if os.path.isfile(Content_Path+Default[0]):
@@ -722,7 +717,7 @@ def Analyse_Request(con,addr,HTTPS,timeS,timeO):
 #Manage Requests
 QuedRequests = []#Requests waiting to be handled
 Active_ServiceThreads = []#Number of active threads
-def Threaded_Service(My_ID,Serve_Time,Sock_TimeOut):
+def Threaded_Service(My_ID,Serve_Time,Sock_TimeOut,SSL_Context):
 	#Globals
 	global Min_Active_ServiceThreads
 	global TLock
@@ -746,7 +741,11 @@ def Threaded_Service(My_ID,Serve_Time,Sock_TimeOut):
 					my_job[0].close()#Connection killed
 					continue#Quick next loop!
 				#DOS check
-				my_job[0].settimeout(MAX_BUFFER_WAIT)#Make sure not to waste resources waiting for data(Send&Recv).
+				#If Https
+				if my_job[2]:
+					my_job[0] = SSL_Context.wrap_socket(my_job[0], server_side=True)#HTTPSify the connection
+				#If Https
+				my_job[0].settimeout(Sock_TimeOut)#Make sure not to waste resources waiting for data(Send&Recv).
 				Analyse_Request(my_job[0],my_job[1],my_job[2],time.time(),Serve_Time)
 				HouseKeeping.Remove_Address(my_job[1])#Remove from concurrency list
 			#check if i may kill my self
@@ -783,11 +782,12 @@ def Threaded_Service(My_ID,Serve_Time,Sock_TimeOut):
 def Create_Service_Thread():
 	global MAX_SERVE_TIME
 	global MAX_BUFFER_WAIT
+	global SSL_Context
 	global Active_ServiceThreads
 	ID = str(uuid.uuid4())[:6]
 	if not(ID in Active_ServiceThreads):
 		Active_ServiceThreads.append(ID)
-		Thread(target=Threaded_Service, args=(ID,MAX_SERVE_TIME,MAX_BUFFER_WAIT)).start()
+		Thread(target=Threaded_Service, args=(ID,MAX_SERVE_TIME,MAX_BUFFER_WAIT,SSL_Context)).start()
 		return ID
 	else:
 		return Create_Service_Thread()
@@ -796,7 +796,7 @@ def Create_Service_Thread():
 #MAIN
 try:
 	#Serve
-	def Serv_HTTP(HTTPS,SSL_Context=None):
+	def Serv_HTTP(HTTPS):
 		#Globals
 		#Service Threads
 		global ServiceThreadLimit
@@ -879,11 +879,6 @@ try:
 						continue#skip to the next connection.
 				#Check Black_List
 
-				#If Https
-				if HTTPS:
-					connection = SSL_Context.wrap_socket(connection, server_side=True)#HTTPSify the connection
-				#If Https
-
 				#Accept Connection
 				if (len(QuedRequests) < MAX_QUE_BACKLOG):
 					QuedRequests.append([connection,address[0],HTTPS])
@@ -913,7 +908,7 @@ try:
 		#HTTPS
 		if SSLEnabled:
 			#start HTTPS on seprate Process (Creates new instance of all variables)
-			HTTPSProc = Process(target=Serv_HTTP, args=(1,SSL_Context))
+			HTTPSProc = Process(target=Serv_HTTP, args=(1,))
 			HTTPSProc.start()
 			#start HTTPS on seprate Process (Creates new instance of all variables)
 		#HTTPS
@@ -922,7 +917,7 @@ try:
 		#HTTP
 	elif SSLEnabled:
 		#HTTPS
-		Serv_HTTP(1,SSL_Context)
+		Serv_HTTP(1)
 		#HTTPS
 	#Start Serving
 except :

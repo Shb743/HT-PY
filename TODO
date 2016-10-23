@@ -3,6 +3,8 @@ SUDO SHB do list...
 
 FIX SSL SOCKET DEATH[/]
 
+Add in checks for hungup threads []
+
 Make SocketBackLogTime(replace socket backlog number to spawn thread with a time i.e 100ms if a request is in que for 100ms spawn new thread to help handle the load)
 
 Re-check if data sanitation (eg:- quote all data to make sure no data is executed.)[i dont think this is an issue but better safe than sorry]
