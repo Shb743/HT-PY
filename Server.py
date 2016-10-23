@@ -47,7 +47,7 @@ ErrorLogging = 1#Should Server Log Exceptions(only ones that occur after Server 
 Working_Directory = "%/root/"# % = execution directory(i.e:- where server root is set,Custom.py will be executed,and where allowed directories * will be set)
 MAX_CONT_SIZE = 52428800 #50MB, Max size of post data
 MAX_QUE_BACKLOG = 20 #Max number of people in the waiting que at any given point
-MAX_SERVE_TIME = 30#Max time for a single request to occur[If needing to serve large files/streaming increase this number]
+MAX_SERVE_TIME = 3#Max time for a single request to occur[If needing to serve large files/streaming increase this number]
 MAX_BUFFER_WAIT = 1#Time for buffer to clear(Send & Recv)[Increase if streaming video/audio]
 SSL_CERT = "server.crt"#Name of ssl certificate(should be in Server_Files/SSL_Cert/)[pem file]
 SSL_KEY = "server.key"#Name of ssl key(should be in Server_Files/SSL_Cert/)[pem file]
@@ -808,6 +808,7 @@ try:
 		#Service Threads
 		#Logging
 		global ErrorLogging
+		global TLock
 		#Logging
 		#Base
 		global On
@@ -845,6 +846,7 @@ try:
 			HouseKeeping.On = 0#Shutdown HouseKeeping
 			sys.exit("Dead")#State Death
 		#Base
+		HouseKeeping.TLock = TLock#Share Thread Lock
 		HouseKeeping.Init()#Begin HouseKeeping service
 		#Create Min Services
 		for i in range(Min_Active_ServiceThreads):

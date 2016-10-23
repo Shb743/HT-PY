@@ -2,7 +2,6 @@
 #Imports
 import time
 from threading import Thread
-import threading
 import datetime
 import os
 #Imports
@@ -14,7 +13,7 @@ Blocked_Candidates = []
 On = 1#Is HouseKeeping Active
 Log_Out = []#Logging
 ELog_Out = []#Error Logging
-TLock = threading.Lock()#Thread Lock for safe cross threading
+TLock = None#Thread Lock for safe cross threading
 #FileName & path for Logs(For HTTPS logs an S will be added to end of the name)
 ErrorLogFile=File_Path+"Server_Files/Logs/ErrorLog"
 LogFile=File_Path+"Server_Files/Logs/Log"
