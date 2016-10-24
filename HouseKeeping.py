@@ -62,11 +62,11 @@ def Check():
 			if (DOS_Candidates[Candidate] > Max_Concurrent_Requests):
 				Blocked_Candidates.append(Candidate)
 				TBD.append(Candidate)
-				Possible_DOS_LOG(Candidate)
 		#DOS Check
 		TLock.release()#Release threading :O
 		#Clear doser
 		for BD in TBD:
+			Possible_DOS_LOG(BD)
 			del DOS_Candidates[BD]
 		#Clear doser
 		#Logging
