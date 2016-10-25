@@ -59,8 +59,6 @@ Min_Active_ServiceThreads = 1#Minimum active threads(I.E:-dont kill this service
 
 #GLOBALS
 
-#CHECKS
-
 #Check if SSL enabled & init
 if SSLEnabled:
 	try:
@@ -74,7 +72,6 @@ if SSLEnabled:
 		On = 0;#Shutdown server
 		sys.exit("Dead")#State Death
 #Check if SSL enabled & init
-#CHECKS
 
 #Load Mime List
 def Load_Mime():
@@ -741,12 +738,11 @@ def Threaded_Service(My_ID,Serve_Time,Sock_TimeOut,SSL_Context):
 					my_job[0].close()#Connection killed
 					continue#Quick next loop!
 				#DOS check
+				my_job[0].settimeout(Sock_TimeOut)#Make sure not to waste resources waiting for data(Send&Recv).
 				#If Https
 				if my_job[2]:
-					#my_job[0].setblocking(0)#Prevent hangup during wraping
 					my_job[0] = SSL_Context.wrap_socket(my_job[0], server_side=True)#HTTPSify the connection
 				#If Https
-				my_job[0].settimeout(Sock_TimeOut)#Make sure not to waste resources waiting for data(Send&Recv).
 				Analyse_Request(my_job[0],my_job[1],my_job[2],time.time(),Serve_Time)
 				HouseKeeping.Remove_Address(my_job[1])#Remove from concurrency list
 			#check if i may kill my self
@@ -767,10 +763,6 @@ def Threaded_Service(My_ID,Serve_Time,Sock_TimeOut,SSL_Context):
 				time.sleep(0.05)#IDLE for 50ms so as to not use up cpu
 			#Idle
 		except Exception, e:
-			#Release locked up thread
-			#if TLock.locked():
-			#	TLock.release()#Release threading :O
-			#Release locked up thread
 			print str(e)
 			#Log errors
 			if ErrorLogging:
