@@ -743,7 +743,7 @@ def Threaded_Service(My_ID,Serve_Time,Sock_TimeOut,SSL_Context):
 				#DOS check
 				#If Https
 				if my_job[2]:
-					my_job[0].setblocking(0)#Prevent hangup during wraping
+					#my_job[0].setblocking(0)#Prevent hangup during wraping
 					my_job[0] = SSL_Context.wrap_socket(my_job[0], server_side=True)#HTTPSify the connection
 				#If Https
 				my_job[0].settimeout(Sock_TimeOut)#Make sure not to waste resources waiting for data(Send&Recv).
