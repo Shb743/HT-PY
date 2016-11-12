@@ -9,7 +9,7 @@ Comes with server side language support for Python.
 #Pre-Requisites
 The server does not need any pre-requisites other than python 2.7 with the standard libraries.
 
-For HTTPS support Open-SSL is required.
+For HTTPS support Open-SSL is required (with python version 2.7.9 or greater).
 
 *Note: I have not tested the server on windows.
 
