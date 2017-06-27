@@ -8,6 +8,6 @@
 
 *Ciphers
 -enabled:N
-CipherString = ALL:!ADH:!RC4+RSA:+HIGH:+MEDIUM:!LOW:!SSLv2:!EXPORT
+CipherString = ALL:!aNULL:!eNULL:!CAMELLIA
 
 #Note CipherString above not recomended it's just an example

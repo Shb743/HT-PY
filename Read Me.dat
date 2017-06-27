@@ -73,6 +73,7 @@ BASIC File Upload example using the servers system on Python:
 My Sources:
 -----------
 The main source of my knowledge on HTTP was from this website: http://www.w3.org/Protocols/rfc2616/rfc2616.html
+https://tools.ietf.org/html/rfc7232#section-3.1
 
 ------------------------------------------------------------------------------------------------------------------------------------
 *Any one who helps me will have their name listed in the contributors section if they want,if not their anonymity can be maintained.

@@ -121,7 +121,7 @@ def Settings():
 	if (len(Settings[0]) < 5):
 		f.write('*White List\n-enabled:N\n-Adresslist = [\"192.168.0.1\",\"127.0.0.1\"]\n\n')
 		f.write('*Black List\n-enabled:N\n-Adresslist = [\"111.111.111.111\",\"0.0.0.0\"]\n\n')
-		f.write("*Ciphers\n-enabled:N\nCipherString = ALL:!ADH:!RC4+RSA:+HIGH:+MEDIUM:!LOW:!SSLv2:!EXPORT\n\n#Note CipherString above not recomended it's just an example")
+		f.write("*Ciphers\n-enabled:N\nCipherString = ALL:!aNULL:!eNULL:!CAMELLIA\n\n#Note CipherString above not recomended it's just an example")
 		f.seek(0)
 		Settings = f.read().split("\n")
 	#Auto Generate file
@@ -489,8 +489,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,P
 			#If Boundry Present Get data till boundry
 			#If not Just get the Data
 			else:
-				Data_Recieved = 0
-				while (Data_Recieved<Content_Len):
+				while (len(POST_DATA)<Content_Len):
 					#Prevent Crash upon file failure
 					try:
 						if ((time.time()-timeS)>timeO): raise Exception("Serve Timed Out")#@TimeOut
@@ -507,7 +506,6 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,P
 						Incomplete_Post = 1#Stop processing request
 						break#Leave loop file not Recieved
 					#Prevent Crash upon file failure
-					Data_Recieved+=BuffSize
 					#File Handle if required
 					if POST_File_Handling:
 						File_Obj.write(POST_DATA)#Write to file
