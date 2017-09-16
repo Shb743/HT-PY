@@ -18,6 +18,3 @@ For HTTPS support Open-SSL is required (with python version 2.7.9 or greater).
 The server should be given sufficient permissions if it is to bind to reserved ports i.e:80
 
 Server can be started like so "python Server.py".
-
-# Author:Shoaib Omar
-example of website running on HT&PY: http://shoaibomar.com | https://shoaibomar.com

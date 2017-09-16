@@ -42,8 +42,8 @@ Port = 80#Port
 HTTPEnabled = 1#HTTP on/off
 SSLPort = 443#Port for HTTPS
 SSLEnabled = 0#HTTPS on/off
-Logging = 1#Should The Server Log stuff?
-ErrorLogging = 1#Should Server Log Exceptions(only ones that occur after Server is up).
+Logging = 0#Should The Server Log stuff?
+ErrorLogging = 0#Should Server Log Exceptions(only ones that occur after Server is up).
 Working_Directory = "%/root/"# % = execution directory(i.e:- where server root is set,Custom.py will be executed,and where allowed directories * will be set)
 MAX_CONT_SIZE = 52428800 #50MB, Max size of post data
 MAX_QUE_BACKLOG = 20 #Max number of people in the waiting que at any given point
@@ -382,7 +382,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,P
 		#Get content Length & File Boundry
 		#Check for data in headers
 		for POST_Header in RAW_DATA:
-			if ("Content-Length".lower() in POST_Header.lower()):
+			if ("content-length" in POST_Header.lower()):
 				Content_Len = int(POST_Header.split(":")[1])
 			#Get File Boundry
 			if ("boundary=" in POST_Header):
@@ -393,18 +393,18 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,P
 		#Check for data in headers
 		#Get content Length & File Boundry
 		#Check if post data is latched on to Header
-		if (Payload != None):
+		if (Payload != None) & (Payload.strip() != ""):
 			#Check for data in post specific headers
 			for POST_Header in Payload.split('\n'):
 				#Get File Name
-				if ("Content-Disposition:" in POST_Header):
+				if ("content-disposition:" in POST_Header.lower()):
 					POST_File_Name = (POST_Header.split('="')[-1])[:-2]
 				#Get File Name
 			#Check for data in post specific headers
 			#Sort out payload (File post etc)
 			if (POST_File_Name !=  ""):
 				#Remove Post Headers
-				POST_DATA = Payload.split("\r\n\r\n")[2]
+				POST_DATA = [i for i in Payload.split("\r\n\r\n") if i.strip()][-1]
 				#Remove Post Headers
 			else:
 				#No Post Headers
@@ -443,7 +443,6 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,P
 					try:
 						if ((time.time()-timeS)>timeO): raise Exception("Serve Timed Out")#@TimeOut
 						POST_DATA += con.recv(BuffSize)#Get post until boundry is there!
-						Recieved +=BuffSize
 						#Make sure not null
 						if (POST_DATA[-1] == None):
 							raise Exception("Recieved Null on post")
@@ -457,7 +456,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,P
 						break#Leave loop file not Recieved
 					#Prevent Crash upon file failure
 					#Check For Post data Headers
-					if (Recieved == BuffSize):
+					if ((Recieved <= BuffSize)&(POST_File_Name == "")):
 						#Extract File name
 						Post_Headers = POST_DATA.split("\n")
 						for PHeader in Post_Headers:
@@ -465,7 +464,7 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,P
 								POST_File_Name = (PHeader.split('="')[-1])[:-2]
 						#Extract File name
 						#Remove Post Headers
-						POST_DATA = POST_DATA.split("\r\n\r\n")[2]
+						POST_DATA = [i for i in POST_DATA.split("\r\n\r\n") if i.strip()][-1]
 						#Remove Post Headers
 					#Check For Post data Headers
 					#Make sure file sent is not larger than stated
@@ -480,11 +479,13 @@ def Respond(Content_Name,Content_Path,Url_parameters,con,Request_Type,RAW_DATA,P
 						POST_DATA = POST_DATA.replace(("--"+File_Boundry+"--"),"")#Remove footer if whole file
 						#Remove Footer
 					#Check for Boundry
-
 					#File Handle if required
 					if POST_File_Handling:
 						File_Obj.write(POST_DATA)#Write to file
+						Recieved += len(POST_DATA)
 						POST_DATA = ""#Dump data from memory
+					else:
+						Recieved = len(POST_DATA)
 					#File Handle if required
 			#If Boundry Present Get data till boundry
 			#If not Just get the Data
