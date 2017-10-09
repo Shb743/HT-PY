@@ -658,10 +658,10 @@ def Analyse_Request(con,addr,HTTPS,timeS,timeO):
 		Content_Path = (File_Name[:-len(File_Name.split("/")[-1])-1])
 		if (Content_Path[:1] != "/"):
 			#Make sure not to go //
-			if ((len(Content_Path) > 2)):
+			if (Content_Path != ""):
 				Content_Path = Working_Directory+Content_Path+"/"
 			else:
-				Content_Path = Working_Directory+"/"
+				Content_Path = Working_Directory
 			#Make sure not to go //
 		Content_Name = File_Name.split("/")[-1]
 		#Content Path & Name
