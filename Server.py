@@ -1,14 +1,14 @@
 #Author:Shoaib Omar (C) 2015
 
 #Imports
-import socket#We need you Mr. Sock!
-import threading#Mutex Locks :$
-from threading import Thread#Multi Threading Yay :)
-from multiprocessing import Process#Multi processing Yay :)
+import socket
+import threading
+from threading import Thread
+from multiprocessing import Process
 import datetime#Needed for logging purposes
-import os,sys#System Stuffs :#
-import urllib#Needed to unquote URLS
-import json#Decoding Settings File :O
+import os,sys
+import urllib#Unquote urls
+import json#Decoding Settings Files
 import uuid#Generating Temporary file names & Service Thread ID's ~
 import GF#Global Functions
 import Custom#Custom Handling of requests
@@ -27,7 +27,7 @@ Allowed_Directories = []#Place Holder.
 White_List = None#Place Holder.
 Black_List = None#Place Holder.
 SSL_Context = None#Place Holder.
-SHB_Mime = []# SHB MIME !
+SHB_Mime = []#Mime types
 Default = ["index.html","main.html"] #Default file to load.
 Settings_file = "Settings.dat"#Load Settings.
 Allowed_Directories_File = "Allowed_Dirs.dat"#Load Allowed Directories Dat.
